@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机器人拳击 · 俯视复刻 v1（原型）</title>
+<style>
+  html, body { margin:0; height:100%; background:#000; display:flex; justify-content:center; align-items:center; font-family:monospace; }
+  canvas { image-rendering:pixelated; box-shadow:0 0 30px #0a3a0a; }
+</style>
+</head>
+<body>
+<canvas id="game" width="400" height="560"></canvas>
+<script>
+"use strict";
+
+// ============ 常量 ============
+const MAX_HP = 5;          // 生命格子数
+const WINDUP   = 0.25;     // 前摇（抬手）
+const STRIKE   = 0.15;     // 命中窗口
+const RECOVER  = 0.30;     // 收拳
+const COOLDOWN = 0.20;     // 冷却
+const CELL     = 14;       // 像素格尺寸
+const PUNCH_REACH = 3 * CELL;                 // 拳头伸出 3 格（=42px）
+const MOVE_SPEED   = 120;                     // 移动速度 px/s
+const MIN_GAP      = 40;                      // 双方最小间距
+const REACH_GAP    = PUNCH_REACH + CELL + CELL; // 够得着的垂直距离（=70）
+
+const RING_X1 = 60, RING_X2 = 340;   // 左右边界（拳击手中心）
+const RING_P1 = 250, RING_P2 = 420;  // 玩家 前后边界
+const RING_E1 = 120, RING_E2 = 250;  // 电脑 前后边界
+
+const COL_BG        = '#041a04';
+const COL_GRID      = '#072a07';
+const COL_PLAYER    = '#39ff6e';
+const COL_ENEMY     = '#4da6ff';
+const COL_HP        = '#39ff6e';
+const COL_HP_EMPTY  = '#0a3a0a';
+const COL_TEXT      = '#9fff9f';
+
+// ============ 工具：AABB 碰撞 ============
+function overlaps(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+// ============ Boxer ============
+class Boxer {
+  constructor(side) {
+    this.side = side;                          // 'player' | 'enemy'
+    this.hp = MAX_HP;
+    this.facing = side === 'player' ? -1 : 1;  // 玩家朝上(-1)，电脑朝下(+1)
+    this.cx = 200;
+    this.cy = side === 'player' ? 390 : 150;
+    this.color = side === 'player' ? COL_PLAYER : COL_ENEMY;
+    this.punchState = null;                    // null | 'windup' | 'strike' | 'recover'
+    this.punchTimer = 0;
+    this.cooldown = 0;
+    this.hand = 'left';                        // 出哪只手，由调用方在出拳前指定
+    this.hitResolved = false;
+  }
+  canPunch() { return this.punchState === null && this.cooldown <= 0; }
+  punch() {
+    if (!this.canPunch()) return false;
+    this.punchState = 'windup';
+    this.punchTimer = WINDUP;
+    this.hitResolved = false;
+    return true;
+  }
+  update(dt) {
+    if (this.cooldown > 0) this.cooldown -= dt;
+    if (this.cooldown < 0) this.cooldown = 0;   // 钳制为 0，避免浮点微正卡住 canPunch
+    if (this.punchState === null) return;
+    this.punchTimer -= dt;
+    if (this.punchState === 'windup' && this.punchTimer <= 0) {
+      this.punchState = 'strike';
+      this.punchTimer = STRIKE;
+    } else if (this.punchState === 'strike' && this.punchTimer <= 0) {
+      this.punchState = 'recover';
+      this.punchTimer = RECOVER;
+    } else if (this.punchState === 'recover' && this.punchTimer <= 0) {
+      this.punchState = null;
+      this.cooldown = COOLDOWN;
+    }
+  }
+  // 出拳被打断 → 强制进入收拳
+  interrupt() {
+    if (this.punchState === 'windup' || this.punchState === 'strike') {
+      this.punchState = 'recover';
+      this.punchTimer = RECOVER;
+      this.hitResolved = true;
+    }
+  }
+  // 身体矩形（2×2 四格）
+  bodyRect() {
+    return { x: this.cx - CELL, y: this.cy - CELL, w: 2 * CELL, h: 2 * CELL };
+  }
+  // 出拳拳头矩形（从身体前方伸出 PUNCH_REACH）
+  punchRect() {
+    const dir = this.facing;
+    const baseX = this.hand === 'left' ? this.cx - CELL : this.cx;
+    const baseY = this.cy + dir * CELL;
+    const punchY = baseY + dir * PUNCH_REACH;
+    return { x: baseX, y: Math.min(baseY, punchY), w: CELL, h: Math.abs(punchY - baseY) + CELL };
+  }
+  draw(ctx) {
+    // 身体 2×2（4 格）——静止与出拳时都画
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.cx - CELL, this.cy - CELL, 2 * CELL, 2 * CELL);
+    // 手：只在出拳过程中显示【出拳的那只手】，静止时不显示、另一只手不显示
+    if (this.punchState === null) return;
+    const dir = this.facing;
+    const baseY = this.cy + dir * CELL;               // 手的基础位置（身体前方）
+    const baseX = this.hand === 'left' ? this.cx - CELL : this.cx;
+    if (this.punchState === 'strike') {
+      // 出拳：从基础位置向前伸 3 格
+      const punchY = baseY + dir * PUNCH_REACH;
+      const top = Math.min(baseY, punchY);
+      const hgt = Math.abs(punchY - baseY) + CELL;
+      ctx.fillRect(baseX, top, CELL, hgt);
+    } else if (this.punchState === 'recover') {
+      // 收拳：缩到伸出 1 格
+      const midY = baseY + dir * CELL;
+      const top = Math.min(baseY, midY);
+      const hgt = Math.abs(midY - baseY) + CELL;
+      ctx.fillRect(baseX, top, CELL, hgt);
+    } else {
+      // 前摇（windup）：出拳手在基础位置（准备出拳）
+      ctx.fillRect(baseX, baseY, CELL, CELL);
+    }
+  }
+}
+
+// ============ Game ============
+class Game {
+  constructor() {
+    this.canvas = document.getElementById('game');
+    this.ctx = this.canvas.getContext('2d');
+    this.state = 'title';   // 'title' | 'fight' | 'ko'
+    this.result = '';
+    this.player = new Boxer('player');
+    this.enemy = new Boxer('enemy');
+    this.aiTimer = 1.0;        // AI 走位决策计时
+    this.aiPunchTimer = 1.0;   // AI 出拳节奏计时
+    this.aiWander = 0;
+    this.aiBack = false;
+    this.keys = {};            // 方向键按住状态
+    this.last = performance.now();
+    window.addEventListener('keydown', e => this.onKeyDown(e));
+    window.addEventListener('keyup', e => this.onKeyUp(e));
+    requestAnimationFrame(t => this.loop(t));
+  }
+  reset() {
+    this.player = new Boxer('player');
+    this.enemy = new Boxer('enemy');
+    this.aiTimer = 0.4 + Math.random() * 0.8;
+    this.aiPunchTimer = 0.8 + Math.random() * 0.8;
+    this.state = 'fight';
+  }
+  onKeyDown(e) {
+    if (e.key === 'Enter') {
+      if (this.state === 'title' || this.state === 'ko') this.reset();
+      return;
+    }
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'a', 'A', 'd', 'D'].includes(e.key)) e.preventDefault();
+    if (this.state !== 'fight') return;
+    if (e.key === 'a' || e.key === 'A') { this.punchPlayer('left'); return; }
+    if (e.key === 'd' || e.key === 'D') { this.punchPlayer('right'); return; }
+    this.keys[e.key] = true;
+  }
+  onKeyUp(e) {
+    this.keys[e.key] = false;
+  }
+  punchPlayer(hand) {
+    this.player.hand = hand;
+    if (this.player.punch()) {
+      // 电脑 25% 概率反打（够得着玩家才反打）
+      if (this.enemy.canPunch() && this.canReach(this.enemy, this.player) && Math.random() < 0.25) {
+        this.enemy.punch();
+      }
+    }
+  }
+  canReach(att, def) {
+    return Math.abs(att.cy - def.cy) <= REACH_GAP;
+  }
+  update(dt) {
+    if (this.state !== 'fight') return;
+    this.movePlayer(dt);
+    this.updateAI(dt);
+    this.player.update(dt);
+    this.enemy.update(dt);
+    this.resolveHits();
+    if (this.player.hp <= 0 || this.enemy.hp <= 0) {
+      this.state = 'ko';
+      this.result = this.enemy.hp <= 0 ? '你赢了！' : '你输了……';
+    }
+  }
+  // 玩家移动（方向键，按住持续走）
+  movePlayer(dt) {
+    const k = this.keys;
+    let dx = 0, dy = 0;
+    if (k.ArrowLeft) dx -= 1;
+    if (k.ArrowRight) dx += 1;
+    if (k.ArrowUp) dy -= 1;    // 向前（靠近电脑）
+    if (k.ArrowDown) dy += 1;  // 向后（远离电脑）
+    if (dx !== 0 || dy !== 0) {
+      const len = Math.sqrt(dx * dx + dy * dy);
+      this.player.cx += dx / len * MOVE_SPEED * dt;
+      this.player.cy += dy / len * MOVE_SPEED * dt;
+    }
+    this.player.cx = Math.max(RING_X1, Math.min(RING_X2, this.player.cx));
+    this.player.cy = Math.max(RING_P1, Math.min(RING_P2, this.player.cy));
+    this.clampGap();
+  }
+  // AI：走位 + 靠近 + 够得着才出拳
+  updateAI(dt) {
+    const ai = this.enemy, pl = this.player;
+    this.aiTimer -= dt;
+    if (this.aiTimer <= 0) {
+      this.aiWander = (Math.random() - 0.5) * 2;   // 随机走位方向
+      this.aiBack = Math.random() < 0.35;          // 是否偶尔后退
+      this.aiTimer = 0.4 + Math.random() * 0.8;
+    }
+    const gap = pl.cy - ai.cy;   // 垂直距离（正 = 玩家在下方更远）
+    let dx = 0, dy = 0;
+    const xDiff = pl.cx - ai.cx;
+    if (Math.abs(xDiff) > 24) dx = Math.sign(xDiff);   // 水平对齐玩家
+    else dx = this.aiWander * 0.6;                     // 左右走位
+    if (gap > REACH_GAP) dy = 1;                       // 太远 → 靠近玩家
+    else if (gap < MIN_GAP + 6) dy = -1;               // 太近 → 后退
+    else if (this.aiBack) dy = -1;                     // 偶尔后退
+    else if (Math.random() < 0.1) dy = 1;              // 小幅逼近
+    if (dx !== 0 || dy !== 0) {
+      const len = Math.sqrt(dx * dx + dy * dy);
+      ai.cx += dx / len * MOVE_SPEED * dt;
+      ai.cy += dy / len * MOVE_SPEED * dt;
+    }
+    ai.cx = Math.max(RING_X1, Math.min(RING_X2, ai.cx));
+    ai.cy = Math.max(RING_E1, Math.min(RING_E2, ai.cy));
+    this.clampGap();
+    // 出拳：够得着才出拳（左右手随机）
+    this.aiPunchTimer -= dt;
+    if (this.aiPunchTimer <= 0 && gap <= REACH_GAP) {
+      if (ai.canPunch() && Math.random() < 0.6) {
+        ai.hand = Math.random() < 0.5 ? 'left' : 'right';
+        ai.punch();
+      }
+      this.aiPunchTimer = 0.8 + Math.random() * 0.8;
+    }
+  }
+  // 双方最小间距（不能穿过对方）
+  clampGap() {
+    const gap = this.player.cy - this.enemy.cy;
+    if (gap < MIN_GAP) {
+      const push = (MIN_GAP - gap) / 2;
+      this.player.cy += push;
+      this.enemy.cy -= push;
+      this.player.cy = Math.max(RING_P1, Math.min(RING_P2, this.player.cy));
+      this.enemy.cy = Math.max(RING_E1, Math.min(RING_E2, this.enemy.cy));
+    }
+  }
+  // 命中判定：出拳拳头"够到"对方身体才算命中
+  resolveHits() {
+    const pl = this.player, en = this.enemy;
+    const pStrike = pl.punchState === 'strike' && !pl.hitResolved;
+    const eStrike = en.punchState === 'strike' && !en.hitResolved;
+    const pHit = pStrike && overlaps(pl.punchRect(), en.bodyRect());
+    const eHit = eStrike && overlaps(en.punchRect(), pl.bodyRect());
+    if (pHit && eHit) {
+      // 同帧互中 → 互换
+      pl.hp = Math.max(0, pl.hp - 1);
+      en.hp = Math.max(0, en.hp - 1);
+      pl.interrupt();
+      en.interrupt();
+    } else if (pHit) {
+      en.hp = Math.max(0, en.hp - 1);
+      en.interrupt();
+      pl.hitResolved = true;
+    } else if (eHit) {
+      pl.hp = Math.max(0, pl.hp - 1);
+      pl.interrupt();
+      en.hitResolved = true;
+    }
+  }
+  draw() {
+    const ctx = this.ctx;
+    // 背景
+    ctx.fillStyle = COL_BG;
+    ctx.fillRect(0, 0, 400, 560);
+    // 网格（点阵感）
+    ctx.strokeStyle = COL_GRID;
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= 400; x += CELL) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 560); ctx.stroke();
+    }
+    for (let y = 0; y <= 560; y += CELL) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(400, y); ctx.stroke();
+    }
+    if (this.state === 'title') { this.drawTitle(ctx); return; }
+    // 擂台边框
+    ctx.strokeStyle = COL_TEXT;
+    ctx.strokeRect(40, 100, 320, 340);
+    // 拳击手
+    this.enemy.draw(ctx);
+    this.player.draw(ctx);
+    // 生命格子
+    this.drawHP(ctx, 24, 24, this.enemy.hp, '电脑');
+    this.drawHP(ctx, 24, 496, this.player.hp, '玩家');
+    // 操作提示
+    ctx.fillStyle = COL_TEXT;
+    ctx.font = '12px monospace';
+    ctx.fillText('方向键移动  A左拳 D右拳', 128, 548);
+    // KO 结算
+    if (this.state === 'ko') this.drawKO(ctx);
+  }
+  drawHP(ctx, x, y, hp, label) {
+    ctx.fillStyle = COL_TEXT;
+    ctx.font = '14px monospace';
+    ctx.fillText(label, x, y + 14);
+    const gy = y + 22;
+    for (let i = 0; i < MAX_HP; i++) {
+      ctx.fillStyle = i < hp ? COL_HP : COL_HP_EMPTY;
+      ctx.fillRect(x + i * (CELL + 8), gy, CELL, CELL);
+    }
+  }
+  drawTitle(ctx) {
+    ctx.fillStyle = COL_TEXT;
+    ctx.textAlign = 'center';
+    ctx.font = '28px monospace';
+    ctx.fillText('机器人拳击', 200, 210);
+    ctx.font = '14px monospace';
+    ctx.fillText('俯视复刻 v1 · 原型', 200, 245);
+    ctx.fillText('方向键移动 · A左拳 D右拳', 200, 275);
+    ctx.fillText('靠近对手，拳头够到才算命中', 200, 300);
+    ctx.fillText('单人 vs 电脑 · 5 格生命', 200, 325);
+    ctx.fillText('按 回车 开始', 200, 360);
+    ctx.textAlign = 'left';
+  }
+  drawKO(ctx) {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 180, 400, 200);
+    ctx.fillStyle = COL_TEXT;
+    ctx.textAlign = 'center';
+    ctx.font = '34px monospace';
+    ctx.fillText('KO！', 200, 250);
+    ctx.font = '20px monospace';
+    ctx.fillText(this.result, 200, 290);
+    ctx.font = '14px monospace';
+    ctx.fillText('按 回车 再来一局', 200, 330);
+    ctx.textAlign = 'left';
+  }
+  loop(t) {
+    const dt = Math.min((t - this.last) / 1000, 0.05);
+    this.last = t;
+    this.update(dt);
+    this.draw();
+    requestAnimationFrame(tt => this.loop(tt));
+  }
+}
+
+new Game();
+</script>
+</body>
+</html>
