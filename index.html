@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>方块世界 · block-world</title>
+<style>
+  html, body {
+    margin: 0; height: 100%;
+    background: #041a04;
+    font-family: "Courier New", monospace;
+    color: #9fff9f;
+    display: flex; justify-content: center; align-items: center;
+  }
+  .page { text-align: center; padding: 24px; }
+  .logo {
+    font-size: 44px; font-weight: bold; color: #39ff6e;
+    text-shadow: 3px 3px 0 #0a3a0a;
+    letter-spacing: 6px; margin: 0 0 6px 0;
+  }
+  .sub { color: #4da6ff; font-size: 16px; letter-spacing: 4px; margin: 0 0 40px 0; }
+  .card {
+    display: inline-block;
+    padding: 22px 40px;
+    background: #062006;
+    border: 2px solid #2f9e44;
+    text-decoration: none; color: #9fff9f;
+    font-size: 20px; letter-spacing: 2px;
+    box-shadow: 4px 4px 0 #0a3a0a;
+    transition: all 0.15s;
+  }
+  .card:hover { background: #0a3a0a; border-color: #39ff6e; transform: translate(-1px,-1px); box-shadow: 6px 6px 0 #0a3a0a; }
+  .card .tag { display: block; font-size: 12px; color: #4da6ff; margin-bottom: 6px; letter-spacing: 1px; }
+  .foot { margin-top: 48px; font-size: 12px; color: #2f9e44; letter-spacing: 2px; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <h1 class="logo">方块世界</h1>
+    <p class="sub">BLOCK WORLD</p>
+    <a class="card" href="prototype/boxer/v1/index.html">
+      <span class="tag">PROTOTYPE · V1</span>
+      拳击原型 V1
+    </a>
+    <p class="foot">90 年代方块掌机 · 复古小游戏复刻</p>
+  </div>
+</body>
+</html>
