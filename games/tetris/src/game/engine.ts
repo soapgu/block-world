@@ -116,7 +116,7 @@ export class Engine {
     this.clearingRows = []
     this.clearTimer = 0
     this.stashedBoard = null
-    this.queue = []
+    // 发牌队列不在重开时清空：构造时已预填，重开后序列延续（无尽袋语义）
     this.state = 'playing'
     this.spawn()
   }
