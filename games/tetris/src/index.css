@@ -1,52 +1,132 @@
 html, body {
   margin: 0;
-  height: 100%;
+  min-height: 100%;
   background: #041a04;
   font-family: "Courier New", monospace;
   color: #9fff9f;
 }
 
 .page {
-  height: 100%;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 4px;
   padding: 24px;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .title {
-  margin: 24px 0 0 0;
-  font-size: 40px;
+  margin: 0;
+  font-size: 32px;
   font-weight: bold;
   color: #39ff6e;
   text-shadow: 3px 3px 0 #0a3a0a;
   letter-spacing: 6px;
 }
 
-.status {
-  margin: 0;
-  font-size: 16px;
+.sub {
+  margin: 0 0 20px 0;
+  font-size: 13px;
   color: #4da6ff;
   letter-spacing: 4px;
 }
 
-.hint {
+.game-shell {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.board-wrap {
+  position: relative;
+}
+
+.board-frame {
+  padding: 8px;
+  background: #062006;
+  border: 2px solid #2f9e44;
+  box-shadow: 4px 4px 0 #0a3a0a;
+}
+
+canvas.board {
+  display: block;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(4, 26, 4, 0.88);
+}
+
+.overlay-title {
   margin: 0;
-  font-size: 13px;
-  color: #2f9e44;
+  font-size: 28px;
+  font-weight: bold;
+  color: #39ff6e;
+  text-shadow: 3px 3px 0 #0a3a0a;
+  letter-spacing: 4px;
+}
+
+.overlay-detail {
+  margin: 0;
+  font-size: 14px;
+  color: #9fff9f;
   letter-spacing: 2px;
 }
 
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 150px;
+  padding: 14px 18px;
+  background: #062006;
+  border: 2px solid #2f9e44;
+  box-shadow: 4px 4px 0 #0a3a0a;
+  text-align: left;
+}
+
+.panel-label {
+  margin: 10px 0 0 0;
+  font-size: 12px;
+  color: #4da6ff;
+  letter-spacing: 2px;
+}
+
+.panel-label:first-child {
+  margin-top: 0;
+}
+
+.panel-value {
+  margin: 0;
+  font-size: 24px;
+  color: #39ff6e;
+}
+
+.help {
+  margin-top: 18px;
+  font-size: 11px;
+  line-height: 1.9;
+  color: #2f9e44;
+  letter-spacing: 1px;
+}
+
 .back {
-  margin-top: 40px;
-  padding: 10px 24px;
+  margin-top: 24px;
+  padding: 8px 20px;
   background: #062006;
   border: 2px solid #2f9e44;
   color: #9fff9f;
-  font-size: 14px;
+  font-size: 13px;
   letter-spacing: 2px;
   text-decoration: none;
   box-shadow: 4px 4px 0 #0a3a0a;
