@@ -26,10 +26,11 @@ jobs:
           cache: npm
           cache-dependency-path: games/tetris/package-lock.json
 
-      - name: 构建游戏
+      - name: 测试并构建游戏
         working-directory: games/tetris
         run: |
           npm ci
+          npm test
           npm run build
 
       - name: 组装站点（全量静态文件 + 游戏构建产物）
