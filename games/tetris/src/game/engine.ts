@@ -2,6 +2,7 @@ import {
   clearLines,
   collides,
   createBoard,
+  isTSpin,
   lockPiece,
 } from './board'
 import { PIECE_BOX_SIZE, PIECE_ROTATIONS, pieceCells, rotationCandidates } from './pieces'
@@ -19,7 +20,8 @@ function spawnX(type: PieceType): number {
 /** 出生行：让旋转态 0 的最上格恰好贴住场地顶边（部分形状因此悬出负行） */
 function spawnY(type: PieceType): number {
   const cells = PIECE_ROTATIONS[type][0]
-  return -Math.min(...cells.map(([, y]) => y))
+  // 用 0 - x 而非 -x，避免 min 为 0 时得到 -0
+  return 0 - Math.min(...cells.map(([, y]) => y))
 }
 
 /** Next 预览显示的方块数 */
@@ -50,13 +52,22 @@ export class Engine {
   hold: PieceType | null = null
   /** 每块落定前是否已用过 Hold（每锁定一次复位） */
   holdUsed = false
+  /** 消行动画：正在消除的行号（空数组表示不在动画中） */
+  clearingRows: readonly number[] = []
+  /** 消行动画已进行的时间（ms），渲染层据此闪烁 */
+  clearTimer = 0
+
   private score_ = 0
   private lines_ = 0
   private level_ = 1
   private dropTimer = 0
   private softDropping = false
+  private lockTimer = 0
+  private lockResets = 0
   /** 最后一次成功操作是否为旋转（T-Spin 判定条件之一） */
   private lastActionWasRotation = false
+  /** 消行动画期间暂存的「塌落后」棋盘，动画结束时生效 */
+  private stashedBoard: Board | null = null
   private queue: PieceType[] = []
   private readonly randomizer: Randomizer
 
@@ -101,6 +112,9 @@ export class Engine {
     this.piece = null
     this.hold = null
     this.holdUsed = false
+    this.clearingRows = []
+    this.clearTimer = 0
+    this.stashedBoard = null
     this.queue = []
     this.state = 'playing'
     this.spawn()
@@ -113,15 +127,40 @@ export class Engine {
 
   /** 每帧推进（dt 毫秒）。仅在 playing 状态生效。 */
   update(dt: number): void {
-    if (this.state !== 'playing' || !this.piece) return
+    if (this.state !== 'playing') return
+
+    // 消行动画：不出新块、不推进重力
+    if (this.stashedBoard !== null) {
+      this.clearTimer += dt
+      const duration = this.clearDuration()
+      if (this.clearTimer >= duration) this.finishClear()
+      return
+    }
+
+    if (!this.piece) return
+
+    // 触底：锁定延迟计时（期间可继续滑动/旋转）
+    if (this.isGrounded()) {
+      this.lockTimer += dt
+      if (this.lockTimer >= TUNING.lockDelay) this.lockAndSpawn()
+      return
+    }
+
+    // 空中：重力推进
     const gravity = dropIntervalForLevel(this.level_)
     const interval = this.softDropping
       ? Math.min(TUNING.softDropInterval, gravity)
       : gravity
     this.dropTimer += dt
-    while (this.dropTimer >= interval && this.state === 'playing') {
+    while (
+      this.dropTimer >= interval &&
+      this.state === 'playing' &&
+      this.piece !== null &&
+      this.stashedBoard === null
+    ) {
       this.dropTimer -= interval
-      this.stepDown()
+      if (!this.stepDown()) break // 触底，交给锁定延迟
+      if (this.softDropping) this.score_ += TUNING.softDropBonus
     }
   }
 
@@ -132,6 +171,7 @@ export class Engine {
     if (!collides(this.board, pieceCells(candidate))) {
       this.piece = candidate
       this.lastActionWasRotation = false
+      this.onPieceMoved()
     }
   }
 
@@ -145,6 +185,7 @@ export class Engine {
       if (!collides(this.board, pieceCells(candidate))) {
         this.piece = candidate
         this.lastActionWasRotation = true
+        this.onPieceMoved()
         return
       }
     }
@@ -155,12 +196,15 @@ export class Engine {
     this.softDropping = on
   }
 
-  /** 硬降：瞬移到底并立即锁定 */
+  /** 硬降：瞬移到底并立即锁定（无视锁定延迟） */
   hardDrop(): void {
     if (this.state !== 'playing' || !this.piece) return
+    let cells = 0
     while (!this.collidesAt({ y: this.piece.y + 1 })) {
       this.piece.y += 1
+      cells += 1
     }
+    this.score_ += cells * TUNING.hardDropBonus
     this.lastActionWasRotation = false
     this.lockAndSpawn()
   }
@@ -172,11 +216,46 @@ export class Engine {
     this.hold = this.piece.type
     this.holdUsed = true
     this.dropTimer = 0
+    this.lockTimer = 0
+    this.lockResets = 0
     if (swap === null) {
       this.spawn()
     } else {
       this.setPiece(swap)
     }
+  }
+
+  /** 消行动画总时长（四消更久，强化打击感） */
+  clearDuration(): number {
+    return this.clearingRows.length >= 4
+      ? TUNING.tetrisAnimMs
+      : TUNING.clearAnimMs
+  }
+
+  private onPieceMoved(): void {
+    if (this.isGrounded()) {
+      // 触底状态下的调整：有限次刷新锁定计时
+      if (this.lockResets < TUNING.lockResets) {
+        this.lockTimer = 0
+        this.lockResets += 1
+      }
+    } else {
+      // 滑出边缘重新下落：计时与次数全部重置
+      this.lockTimer = 0
+      this.lockResets = 0
+    }
+  }
+
+  private isGrounded(): boolean {
+    return this.piece !== null && this.collidesAt({ y: this.piece.y + 1 })
+  }
+
+  /** 重力下落一格；返回是否成功（失败表示触底） */
+  private stepDown(): boolean {
+    if (this.collidesAt({ y: this.piece!.y + 1 })) return false
+    this.piece!.y += 1
+    if (this.isGrounded()) this.lockTimer = 0 // 落地：锁定计时从零开始
+    return true
   }
 
   private collidesAt(
@@ -186,20 +265,14 @@ export class Engine {
     return collides(this.board, pieceCells({ ...piece, ...delta }))
   }
 
-  private stepDown(): void {
-    if (!this.collidesAt({ y: this.piece!.y + 1 })) {
-      this.piece!.y += 1
-      return
-    }
-    // v1 到底即锁（无锁定延迟），还原掌机手感
-    this.lockAndSpawn()
-  }
-
   private lockAndSpawn(): void {
     const piece = this.piece!
+    const tspin = isTSpin(this.board, piece, this.lastActionWasRotation)
     const locked = lockPiece(this.board, piece)
     this.board = locked.board
     this.dropTimer = 0
+    this.lockTimer = 0
+    this.lockResets = 0
     this.holdUsed = false
 
     if (locked.toppedOut) {
@@ -208,13 +281,31 @@ export class Engine {
     }
 
     const result = clearLines(this.board)
-    if (result.cleared > 0) {
-      this.board = result.board
-      this.lines_ += result.cleared
-      this.score_ += TUNING.lineScores[result.cleared] * this.level_
+    if (result.clearedRows.length > 0) {
+      const cleared = result.clearedRows.length
+      this.lines_ += cleared
+      if (tspin) {
+        this.score_ += TUNING.tspinScores[cleared] * this.level_
+      } else {
+        this.score_ += TUNING.lineScores[cleared] * this.level_
+      }
       this.level_ = 1 + Math.floor(this.lines_ / TUNING.linesPerLevel)
+      // 进入消行动画：棋盘保持塌落前状态供闪烁渲染
+      this.clearingRows = result.clearedRows
+      this.clearTimer = 0
+      this.stashedBoard = result.board
+      this.piece = null
+      return
     }
 
+    this.spawn()
+  }
+
+  private finishClear(): void {
+    this.board = this.stashedBoard!
+    this.stashedBoard = null
+    this.clearingRows = []
+    this.clearTimer = 0
     this.spawn()
   }
 
@@ -232,6 +323,8 @@ export class Engine {
       y: spawnY(type),
     }
     this.lastActionWasRotation = false
+    this.lockTimer = 0
+    this.lockResets = 0
     if (collides(this.board, pieceCells(piece))) {
       // 出生点即被占死：游戏结束，但仍保留方块供最终画面渲染
       this.piece = piece

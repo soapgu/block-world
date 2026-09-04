@@ -16,6 +16,20 @@ export const TUNING = {
   dasInitialDelay: 170,
   /** DAS：自动重复间隔（ms） */
   dasRepeat: 50,
+  /** 锁定延迟：触底后允许继续调整的宽限时间（ms） */
+  lockDelay: 500,
+  /** 锁定延迟期间移动/旋转最多可刷新计时的次数 */
+  lockResets: 15,
+  /** 消行动画时长（ms） */
+  clearAnimMs: 300,
+  /** 四消（Tetris）动画时长（ms） */
+  tetrisAnimMs: 450,
+  /** 软降每下落一格的加分 */
+  softDropBonus: 1,
+  /** 硬降每下落一格的加分 */
+  hardDropBonus: 2,
+  /** T-Spin 消 1/2/3 行的基础分（× 等级） */
+  tspinScores: [0, 800, 1200, 1600],
 } as const
 
 export function dropIntervalForLevel(level: number): number {

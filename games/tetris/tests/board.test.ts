@@ -4,6 +4,7 @@ import {
   collides,
   createBoard,
   ghostDrop,
+  isTSpin,
   lockPiece,
 } from '../src/game/board'
 import { BOARD_HEIGHT, BOARD_WIDTH } from '../src/game/types'
@@ -115,7 +116,7 @@ describe('clearLines', () => {
   it('没有满行时棋盘不变、消除 0 行', () => {
     const board = boardFrom(['..T.......', '..........'])
     const result = clearLines(board)
-    expect(result.cleared).toBe(0)
+    expect(result.clearedRows).toEqual([])
     expect(result.board).toBe(board)
   })
 
@@ -125,8 +126,8 @@ describe('clearLines', () => {
       'JJJJJJJJJJ',
       '..........',
     ])
-    const { board: after, cleared } = clearLines(board)
-    expect(cleared).toBe(1)
+    const { board: after, clearedRows } = clearLines(board)
+    expect(clearedRows).toEqual([1])
     // 原第 0 行的 T 下沉一行到第 1 行，顶部补入空行
     expect(after[0].every((c) => c === null)).toBe(true)
     expect(after[1][2]).toBe('T')
@@ -139,8 +140,8 @@ describe('clearLines', () => {
       'LLLLLLLLLL',
       '..Z.......',
     ])
-    const { board: after, cleared } = clearLines(board)
-    expect(cleared).toBe(2)
+    const { board: after, clearedRows } = clearLines(board)
+    expect(clearedRows).toEqual([0, 2])
     // 消去第 0、2 行后，T 与 Z 各下沉两行
     expect(after[2][2]).toBe('T')
     expect(after[3][2]).toBe('Z')
@@ -156,7 +157,63 @@ describe('clearLines', () => {
       'TTTTTTTTTT',
       'SSSSSSSSSS',
     ])
-    const { cleared } = clearLines(board)
-    expect(cleared).toBe(4)
+    const { clearedRows } = clearLines(board)
+    expect(clearedRows).toEqual([1, 2, 3, 4])
+  })
+})
+
+describe('isTSpin（三角判定）', () => {
+  const tPiece: Piece = { type: 'T', rotation: 1, x: 0, y: 10 }
+
+  it('T 块 + 最后操作为旋转 + 四角占三（含堆叠）时成立', () => {
+    // T 包围盒四角：(0,10)(2,10)(0,12)(2,12)
+    const board = boardFrom([
+      ...Array(10).fill('..........'),
+      'X.X.......',
+      '..........',
+      'X.........',
+    ])
+    expect(isTSpin(board, tPiece, true)).toBe(true)
+  })
+
+  it('最后操作不是旋转时不成立', () => {
+    const board = boardFrom([
+      ...Array(10).fill('..........'),
+      'X.X.......',
+      '..........',
+      'X.........',
+    ])
+    expect(isTSpin(board, tPiece, false)).toBe(false)
+  })
+
+  it('非 T 块不成立', () => {
+    const board = boardFrom([
+      ...Array(10).fill('..........'),
+      'X.X.......',
+      '..........',
+      'X.........',
+    ])
+    expect(
+      isTSpin(board, { ...tPiece, type: 'J' }, true),
+    ).toBe(false)
+  })
+
+  it('四角只占两个时不成立', () => {
+    const board = boardFrom([
+      ...Array(10).fill('..........'),
+      'X.X.......',
+    ])
+    expect(isTSpin(board, tPiece, true)).toBe(false)
+  })
+
+  it('墙与底部也算占用', () => {
+    // T 块贴左墙（x=-1）：四角中两角越出左墙，加上 (1,10) 一个堆叠格共 3 个
+    const board = boardFrom([
+      ...Array(10).fill('..........'),
+      '.X........',
+    ])
+    expect(
+      isTSpin(board, { type: 'T', rotation: 1, x: -1, y: 10 }, true),
+    ).toBe(true)
   })
 })

@@ -13,6 +13,7 @@ const COLORS = {
   active: '#39ff6e',
   activeBorder: '#0a3a0a',
   ghost: '#2f9e44',
+  flash: '#9fff9f',
 } as const
 
 export function boardPixelWidth(): number {
@@ -60,8 +61,18 @@ export function drawGame(ctx: CanvasRenderingContext2D, engine: Engine): void {
   }
   ctx.stroke()
 
+  // 消行动画：被消行以 75ms 为周期闪烁
+  const flashing = engine.clearingRows.length > 0
+  const flashOn =
+    flashing && Math.floor(engine.clearTimer / 75) % 2 === 0
+  const clearingSet = new Set(engine.clearingRows)
+
   for (let y = 0; y < BOARD_HEIGHT; y++) {
     for (let x = 0; x < BOARD_WIDTH; x++) {
+      if (clearingSet.has(y)) {
+        if (flashOn) drawCell(ctx, x, y, COLORS.flash)
+        continue
+      }
       const cell = engine.board[y][x]
       if (cell !== null) drawCell(ctx, x, y, COLORS.locked)
     }

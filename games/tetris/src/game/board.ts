@@ -48,13 +48,49 @@ export function lockPiece(
   return { board: next, toppedOut }
 }
 
-/** 消除已填满的行，空行从顶部补入。返回新棋盘与消除行数。 */
-export function clearLines(board: Board): { board: Board; cleared: number } {
-  const kept = board.filter((row) => row.some((cell) => cell === null))
-  const cleared = board.length - kept.length
-  if (cleared === 0) return { board, cleared }
-  const empty = Array.from({ length: cleared }, () =>
+/** 消除已填满的行，空行从顶部补入。返回新棋盘与被消除的行号。 */
+export function clearLines(board: Board): {
+  board: Board
+  clearedRows: number[]
+} {
+  const clearedRows: number[] = []
+  const kept: Board = []
+  for (let y = 0; y < board.length; y++) {
+    if (board[y].every((cell) => cell !== null)) clearedRows.push(y)
+    else kept.push(board[y])
+  }
+  if (clearedRows.length === 0) return { board, clearedRows }
+  const empty = Array.from({ length: clearedRows.length }, () =>
     Array<Cell>(BOARD_WIDTH).fill(null),
   )
-  return { board: [...empty, ...kept], cleared }
+  return { board: [...empty, ...kept], clearedRows }
+}
+
+/**
+ * T-Spin 三角判定：T 块、最后一次成功操作为旋转，
+ * 且包围盒四个角中至少 3 个被占（已锁定的块、墙、底部都算占用）。
+ */
+export function isTSpin(
+  board: Board,
+  piece: Piece,
+  lastActionWasRotation: boolean,
+): boolean {
+  if (piece.type !== 'T' || !lastActionWasRotation) return false
+  const corners: Array<readonly [number, number]> = [
+    [0, 0],
+    [2, 0],
+    [0, 2],
+    [2, 2],
+  ]
+  let occupied = 0
+  for (const [cx, cy] of corners) {
+    const x = piece.x + cx
+    const y = piece.y + cy
+    if (x < 0 || x >= BOARD_WIDTH || y >= BOARD_HEIGHT) {
+      occupied += 1
+      continue
+    }
+    if (y >= 0 && board[y][x] !== null) occupied += 1
+  }
+  return occupied >= 3
 }

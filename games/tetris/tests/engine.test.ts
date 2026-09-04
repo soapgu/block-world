@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Engine } from '../src/game/engine'
 import type { Randomizer } from '../src/game/randomizer'
-import type { PieceType } from '../src/game/types'
+import type { Cell, PieceType } from '../src/game/types'
 
 /** 固定序列发牌器：按给定顺序循环发牌，绕过 7-bag 以便断言 */
 function fixedRandomizer(sequence: PieceType[]): Randomizer {
@@ -53,5 +53,86 @@ describe('Hold 暂存', () => {
     engine.hardDrop() // I 落定，O 出场，holdUsed 复位
     engine.holdPiece() // O 入槽，T 出场
     expect(engine.getUiSnapshot().hold).toBe('O')
+  })
+})
+
+describe('软降/硬降计分', () => {
+  it('软降每下落一格 +1', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(['O']) })
+    engine.start()
+    engine.setSoftDrop(true)
+    engine.update(50) // 软降间隔 50ms，恰好一步
+    expect(engine.score).toBe(1)
+  })
+
+  it('硬降每下落一格 +2（O 从顶落底 18 格 = 36 分）', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(['O']) })
+    engine.start()
+    engine.hardDrop()
+    expect(engine.score).toBe(36)
+  })
+})
+
+describe('锁定延迟', () => {
+  it('触底后不立即锁定，延迟期满才锁', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(['O']) })
+    engine.start()
+    engine.setSoftDrop(true)
+    engine.update(1000) // O 落到底（y=18）
+    engine.setSoftDrop(false)
+    expect(engine.piece!.y).toBe(18)
+
+    engine.update(400) // 400 < 500，仍在宽限中
+    expect(engine.piece!.y).toBe(18)
+
+    engine.update(200) // 累计 600 ≥ 500，锁定并出新块
+    expect(engine.piece!.y).toBe(0)
+  })
+
+  it('触底期间的移动会刷新宽限计时', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(['O']) })
+    engine.start()
+    engine.setSoftDrop(true)
+    engine.update(1000)
+    engine.setSoftDrop(false)
+
+    engine.update(400) // 计时 400
+    engine.moveX(1) // 成功移动 → 计时清零（第 1 次刷新）
+    engine.update(400) // 400 < 500，仍未锁
+    expect(engine.piece!.y).toBe(18)
+
+    engine.update(200) // 600 ≥ 500，锁定
+    expect(engine.piece!.y).toBe(0)
+  })
+})
+
+describe('消行动画', () => {
+  it('锁定成整行后进入动画，动画结束后塌落并发新块', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(['O']) })
+    engine.start()
+    // 底行铺 8 格、留 (8,19)(9,19) 两个空位，O 移到 x=8 后落底恰好补满
+    const bottom: Cell[] = [
+      ...Array(8).fill('J'),
+      null,
+      null,
+    ]
+    engine.board[19] = bottom
+    for (let i = 0; i < 4; i++) engine.moveX(1) // O：x 4→8
+    engine.hardDrop()
+
+    // 硬降 36 分 + 单行 100 分
+    expect(engine.score).toBe(136)
+    expect(engine.lines).toBe(1)
+    expect(engine.clearingRows).toEqual([19])
+    expect(engine.piece).toBeNull()
+
+    engine.update(299) // 动画未结束
+    expect(engine.clearingRows).toEqual([19])
+    engine.update(1) // 300ms 到期
+    expect(engine.clearingRows).toEqual([])
+    // 满行（8 个 J）已消除，O 的上半格沉到底行
+    expect(engine.board[19][0]).toBeNull()
+    expect(engine.board[19][8]).toBe('O')
+    expect(engine.piece).not.toBeNull()
   })
 })
