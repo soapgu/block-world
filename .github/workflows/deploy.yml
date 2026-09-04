@@ -1,0 +1,62 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: games/tetris/package-lock.json
+
+      - name: 构建游戏
+        working-directory: games/tetris
+        run: |
+          npm ci
+          npm run build
+
+      - name: 组装站点（全量静态文件 + 游戏构建产物）
+        run: |
+          mkdir -p _site/games/tetris
+          rsync -a \
+            --exclude .git \
+            --exclude .github \
+            --exclude .zcode \
+            --exclude .DS_Store \
+            --exclude node_modules \
+            --exclude games \
+            --exclude _site \
+            ./ _site/
+          cp -a games/tetris/dist/. _site/games/tetris/
+          touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
