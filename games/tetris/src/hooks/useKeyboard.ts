@@ -14,6 +14,10 @@ const TRACKED_KEYS = new Set([
   'Shift',
   'c',
   'C',
+  'z',
+  'Z',
+  'x',
+  'X',
 ])
 
 /**
@@ -59,7 +63,13 @@ export function useKeyboard(engine: Engine): void {
           engine.setSoftDrop(true)
           break
         case 'ArrowUp':
-          engine.rotate()
+        case 'x':
+        case 'X':
+          engine.rotate(1)
+          break
+        case 'z':
+        case 'Z':
+          engine.rotate(-1)
           break
         case ' ':
           engine.hardDrop()

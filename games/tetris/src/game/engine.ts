@@ -4,7 +4,7 @@ import {
   createBoard,
   lockPiece,
 } from './board'
-import { PIECE_BOX_SIZE, PIECE_ROTATIONS, pieceCells } from './pieces'
+import { PIECE_BOX_SIZE, PIECE_ROTATIONS, pieceCells, rotationCandidates } from './pieces'
 import { createRandomizer } from './randomizer'
 import type { Randomizer } from './randomizer'
 import { dropIntervalForLevel, TUNING } from './tuning'
@@ -55,6 +55,8 @@ export class Engine {
   private level_ = 1
   private dropTimer = 0
   private softDropping = false
+  /** 最后一次成功操作是否为旋转（T-Spin 判定条件之一） */
+  private lastActionWasRotation = false
   private queue: PieceType[] = []
   private readonly randomizer: Randomizer
 
@@ -126,13 +128,26 @@ export class Engine {
   /** 左右移动，dir 为 -1 / 1 */
   moveX(dir: -1 | 1): void {
     if (this.state !== 'playing' || !this.piece) return
-    this.tryMove({ x: this.piece.x + dir })
+    const candidate: Piece = { ...this.piece, x: this.piece.x + dir }
+    if (!collides(this.board, pieceCells(candidate))) {
+      this.piece = candidate
+      this.lastActionWasRotation = false
+    }
   }
 
-  /** v1 简单旋转：目标旋转态若碰撞则直接拒绝（SRS 留 v2） */
-  rotate(): void {
+  /**
+   * SRS 旋转：按踢墙表依次尝试候选位置，第一个不碰撞的生效；
+   * 全部碰撞则旋转失败。dir 为 1（顺时针）/ -1（逆时针）。
+   */
+  rotate(dir: 1 | -1 = 1): void {
     if (this.state !== 'playing' || !this.piece) return
-    this.tryMove({ rotation: (this.piece.rotation + 1) % 4 })
+    for (const candidate of rotationCandidates(this.piece, dir)) {
+      if (!collides(this.board, pieceCells(candidate))) {
+        this.piece = candidate
+        this.lastActionWasRotation = true
+        return
+      }
+    }
   }
 
   /** 软降开关：按住 ↓ 时钳制下落间隔 */
@@ -146,6 +161,7 @@ export class Engine {
     while (!this.collidesAt({ y: this.piece.y + 1 })) {
       this.piece.y += 1
     }
+    this.lastActionWasRotation = false
     this.lockAndSpawn()
   }
 
@@ -160,14 +176,6 @@ export class Engine {
       this.spawn()
     } else {
       this.setPiece(swap)
-    }
-  }
-
-  private tryMove(delta: Partial<Pick<Piece, 'x' | 'y' | 'rotation'>>): void {
-    const piece = this.piece!
-    const candidate: Piece = { ...piece, ...delta }
-    if (!this.collidesAt(candidate)) {
-      this.piece = candidate
     }
   }
 
@@ -223,6 +231,7 @@ export class Engine {
       x: spawnX(type),
       y: spawnY(type),
     }
+    this.lastActionWasRotation = false
     if (collides(this.board, pieceCells(piece))) {
       // 出生点即被占死：游戏结束，但仍保留方块供最终画面渲染
       this.piece = piece

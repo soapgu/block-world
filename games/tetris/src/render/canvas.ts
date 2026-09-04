@@ -1,4 +1,5 @@
 import { pieceCells } from '../game/pieces'
+import { ghostDrop } from '../game/board'
 import { BOARD_HEIGHT, BOARD_WIDTH } from '../game/types'
 import type { Engine } from '../game/engine'
 
@@ -11,6 +12,7 @@ const COLORS = {
   locked: '#2f9e44',
   active: '#39ff6e',
   activeBorder: '#0a3a0a',
+  ghost: '#2f9e44',
 } as const
 
 export function boardPixelWidth(): number {
@@ -62,6 +64,25 @@ export function drawGame(ctx: CanvasRenderingContext2D, engine: Engine): void {
     for (let x = 0; x < BOARD_WIDTH; x++) {
       const cell = engine.board[y][x]
       if (cell !== null) drawCell(ctx, x, y, COLORS.locked)
+    }
+  }
+
+  // Ghost 幽灵块：当前方块落点的空心投影
+  if (engine.piece && engine.state === 'playing') {
+    const drop = ghostDrop(engine.board, engine.piece)
+    if (drop > 0) {
+      ctx.strokeStyle = COLORS.ghost
+      ctx.lineWidth = 2
+      for (const [x, y] of pieceCells(engine.piece)) {
+        const gy = y + drop
+        if (gy < 0) continue
+        ctx.strokeRect(
+          x * CELL_SIZE + 3,
+          gy * CELL_SIZE + 3,
+          CELL_SIZE - 6,
+          CELL_SIZE - 6,
+        )
+      }
     }
   }
 

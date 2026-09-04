@@ -3,10 +3,11 @@ import {
   clearLines,
   collides,
   createBoard,
+  ghostDrop,
   lockPiece,
 } from '../src/game/board'
 import { BOARD_HEIGHT, BOARD_WIDTH } from '../src/game/types'
-import type { Board, Cell, PieceType } from '../src/game/types'
+import type { Board, Cell, Piece, PieceType } from '../src/game/types'
 
 /** 用字符串画板：'.' 为空，字母为方块类型；缺省补空行 */
 function boardFrom(rows: string[]): Board {
@@ -80,6 +81,33 @@ describe('lockPiece', () => {
       y: -2,
     })
     expect(toppedOut).toBe(true)
+  })
+})
+
+describe('ghostDrop', () => {
+  it('空棋盘上 O 块可直落到底（18 格）', () => {
+    const board = createBoard()
+    const piece: Piece = { type: 'O', rotation: 0, x: 4, y: 0 }
+    expect(ghostDrop(board, piece)).toBe(18)
+  })
+
+  it('被堆叠挡住时落到堆顶上方', () => {
+    const board = boardFrom([
+      ...Array(19).fill('..........'),
+      'OO........',
+    ])
+    const piece: Piece = { type: 'O', rotation: 0, x: 0, y: 0 }
+    // 底行 (0,19)(1,19) 已占，O 最终停在 rows 17-18
+    expect(ghostDrop(board, piece)).toBe(17)
+  })
+
+  it('贴住堆顶时为 0', () => {
+    const board = boardFrom([
+      ...Array(19).fill('..........'),
+      'OO........',
+    ])
+    const piece: Piece = { type: 'O', rotation: 0, x: 0, y: 17 }
+    expect(ghostDrop(board, piece)).toBe(0)
   })
 })
 

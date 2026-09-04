@@ -3,8 +3,9 @@ import {
   PIECE_BOX_SIZE,
   PIECE_ROTATIONS,
   pieceCells,
+  rotationCandidates,
 } from '../src/game/pieces'
-import type { PieceType } from '../src/game/types'
+import type { Piece, PieceType } from '../src/game/types'
 
 const ALL_TYPES: PieceType[] = ['I', 'O', 'T', 'S', 'Z', 'J', 'L']
 
@@ -69,5 +70,65 @@ describe('pieceCells', () => {
     const cells = pieceCells({ type: 'T', rotation: 0, x: 3, y: -1 })
     expect(cells.some(([, y]) => y < 0)).toBe(true)
     expect(cells.some(([, y]) => y >= 0)).toBe(true)
+  })
+})
+
+describe('rotationCandidates（SRS 踢墙）', () => {
+  it('首个候选为原位旋转（零偏移）', () => {
+    const piece: Piece = { type: 'T', rotation: 0, x: 3, y: 5 }
+    const [first] = rotationCandidates(piece, 1)
+    expect(first.rotation).toBe(1)
+    expect(first.x).toBe(3)
+    expect(first.y).toBe(5)
+  })
+
+  it('JLSTZ 顺时针 0>1 的第二个偏移为左移一格（y 轴已翻转）', () => {
+    const piece: Piece = { type: 'T', rotation: 0, x: 3, y: 5 }
+    const second = rotationCandidates(piece, 1)[1]
+    // SRS 偏移 (-1, 0)：x-1，y 不变
+    expect(second.x).toBe(2)
+    expect(second.y).toBe(5)
+  })
+
+  it('JLSTZ 顺时针 0>1 的第三个偏移为左移一格且上移一格', () => {
+    const piece: Piece = { type: 'T', rotation: 0, x: 3, y: 5 }
+    const third = rotationCandidates(piece, 1)[2]
+    // SRS 偏移 (-1, +1)：屏幕坐标 y 向下，应减一
+    expect(third.x).toBe(2)
+    expect(third.y).toBe(4)
+  })
+
+  it('I 块使用专用表：0>1 第二个偏移为 (-2, 0)', () => {
+    const piece: Piece = { type: 'I', rotation: 0, x: 3, y: 5 }
+    const second = rotationCandidates(piece, 1)[1]
+    expect(second.x).toBe(1)
+    expect(second.y).toBe(5)
+  })
+
+  it('O 块只给一个候选且位置不变', () => {
+    const piece: Piece = { type: 'O', rotation: 0, x: 4, y: 0 }
+    const candidates = rotationCandidates(piece, 1)
+    expect(candidates).toHaveLength(1)
+    expect(candidates[0].x).toBe(4)
+    expect(candidates[0].y).toBe(0)
+    expect(candidates[0].rotation).toBe(1)
+  })
+
+  it('逆时针 0>3 使用对应表：第二个偏移为 (+1, 0)', () => {
+    const piece: Piece = { type: 'T', rotation: 0, x: 3, y: 5 }
+    const second = rotationCandidates(piece, -1)[1]
+    expect(second.x).toBe(4)
+    expect(second.y).toBe(5)
+  })
+
+  it('除 O 外每种方块给 5 个候选，且旋转态编号正确', () => {
+    for (const type of ALL_TYPES.filter((t) => t !== 'O')) {
+      const candidates = rotationCandidates(
+        { type, rotation: 2, x: 3, y: 5 },
+        1,
+      )
+      expect(candidates).toHaveLength(5)
+      for (const c of candidates) expect(c.rotation).toBe(3)
+    }
   })
 })

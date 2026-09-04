@@ -56,3 +56,49 @@ export function pieceCells(piece: Piece): Array<[number, number]> {
     ([cx, cy]) => [piece.x + cx, piece.y + cy] as [number, number],
   )
 }
+
+/**
+ * SRS 踢墙表（Tetris Guideline 标准）。
+ * 键为 "起态>终态"；偏移为 SRS 约定（x 向右、y 向上），应用时需把 y 翻转
+ * 到屏幕坐标系（y 向下）。
+ */
+const KICKS_JLSTZ: Record<string, Array<readonly [number, number]>> = {
+  '0>1': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  '1>0': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+  '1>2': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+  '2>1': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  '2>3': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  '3>2': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  '3>0': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  '0>3': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+}
+
+const KICKS_I: Record<string, Array<readonly [number, number]>> = {
+  '0>1': [[0, 0], [-2, 0], [1, 0], [-2, -1], [1, 2]],
+  '1>0': [[0, 0], [2, 0], [-1, 0], [2, 1], [-1, -2]],
+  '1>2': [[0, 0], [-1, 0], [2, 0], [-1, 2], [2, -1]],
+  '2>1': [[0, 0], [1, 0], [-2, 0], [1, -2], [-2, 1]],
+  '2>3': [[0, 0], [2, 0], [-1, 0], [2, 1], [-1, -2]],
+  '3>2': [[0, 0], [-2, 0], [1, 0], [-2, -1], [1, 2]],
+  '3>0': [[0, 0], [1, 0], [-2, 0], [1, -2], [-2, 1]],
+  '0>3': [[0, 0], [-1, 0], [2, 0], [-1, 2], [2, -1]],
+}
+
+/**
+ * 按 SRS 规则给出旋转的全部候选位置（依次尝试，第一个不碰撞的生效）。
+ * O 块旋转无位移，只给原位一个候选。
+ */
+export function rotationCandidates(piece: Piece, dir: 1 | -1): Piece[] {
+  const to = ((piece.rotation + dir) % 4 + 4) % 4
+  if (piece.type === 'O') {
+    return [{ ...piece, rotation: to }]
+  }
+  const table = piece.type === 'I' ? KICKS_I : KICKS_JLSTZ
+  const kicks = table[`${piece.rotation}>${to}`] ?? [[0, 0] as const]
+  return kicks.map(([dx, dy]) => ({
+    ...piece,
+    rotation: to,
+    x: piece.x + dx,
+    y: piece.y - dy, // SRS 的 y 向上 → 屏幕 y 向下
+  }))
+}

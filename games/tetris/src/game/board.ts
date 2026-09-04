@@ -22,6 +22,15 @@ export function collides(board: Board, cells: Cells): boolean {
   return false
 }
 
+/** 方块在无碰撞前提下最多还能下落的格数（Ghost 投影距离） */
+export function ghostDrop(board: Board, piece: Piece): number {
+  let drop = 0
+  while (!collides(board, pieceCells({ ...piece, y: piece.y + drop + 1 }))) {
+    drop += 1
+  }
+  return drop
+}
+
 /** 将方块固定入盘（返回新棋盘）。toppedOut 表示有格子悬在场地顶边之上（堆顶溢出）。 */
 export function lockPiece(
   board: Board,
