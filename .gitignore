@@ -1,2 +1,4 @@
 # macOS
 .DS_Store
+# ZCode 本地会话文件
+.zcode/
