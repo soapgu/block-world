@@ -6,9 +6,25 @@ export interface Randomizer {
 
 const TYPES: PieceType[] = ['I', 'O', 'T', 'S', 'Z', 'J', 'L']
 
-/** v1 纯随机发牌（等概率 7 选 1）；v2 将替换为 7-bag，接口保持不变 */
+function shuffled<T>(items: readonly T[]): T[] {
+  const arr = [...items]
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+/**
+ * 7-bag 随机发牌：7 种方块各一块装袋洗乱，发完一袋再换下一袋，
+ * 保证任意时刻最多等 12 块就能等到任意一种方块。
+ */
 export function createRandomizer(): Randomizer {
+  let bag: PieceType[] = []
   return {
-    next: () => TYPES[Math.floor(Math.random() * TYPES.length)],
+    next: () => {
+      if (bag.length === 0) bag = shuffled(TYPES)
+      return bag.pop()!
+    },
   }
 }

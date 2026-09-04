@@ -6,6 +6,7 @@ import {
 } from './board'
 import { PIECE_BOX_SIZE, PIECE_ROTATIONS, pieceCells } from './pieces'
 import { createRandomizer } from './randomizer'
+import type { Randomizer } from './randomizer'
 import { dropIntervalForLevel, TUNING } from './tuning'
 import type { Board, EngineState, Piece, PieceType, Stats } from './types'
 import { BOARD_WIDTH } from './types'
@@ -21,6 +22,23 @@ function spawnY(type: PieceType): number {
   return -Math.min(...cells.map(([, y]) => y))
 }
 
+/** Next 预览显示的方块数 */
+const NEXT_PREVIEW = 3
+/** 发牌队列最小长度：即将出场 1 块 + 预览 3 块 */
+const QUEUE_MIN = 1 + NEXT_PREVIEW
+
+/** React 外壳需要的低频 UI 数据（每帧浅比较后同步） */
+export interface UiSnapshot extends Stats {
+  state: EngineState
+  hold: PieceType | null
+  next: readonly PieceType[]
+}
+
+export interface EngineOptions {
+  /** 注入发牌器（测试用固定序列） */
+  randomizer?: Randomizer
+}
+
 /**
  * 游戏引擎：持有全部游戏数据，只暴露命令与 update(dt)。
  * 不碰 DOM / React，可独立单测。
@@ -29,12 +47,20 @@ export class Engine {
   state: EngineState = 'ready'
   board: Board = createBoard()
   piece: Piece | null = null
+  hold: PieceType | null = null
+  /** 每块落定前是否已用过 Hold（每锁定一次复位） */
+  holdUsed = false
   private score_ = 0
   private lines_ = 0
   private level_ = 1
   private dropTimer = 0
   private softDropping = false
-  private randomizer = createRandomizer()
+  private queue: PieceType[] = []
+  private readonly randomizer: Randomizer
+
+  constructor(options: EngineOptions = {}) {
+    this.randomizer = options.randomizer ?? createRandomizer()
+  }
 
   get score(): number {
     return this.score_
@@ -52,6 +78,17 @@ export class Engine {
     return { score: this.score_, lines: this.lines_, level: this.level_ }
   }
 
+  getUiSnapshot(): UiSnapshot {
+    return {
+      score: this.score_,
+      lines: this.lines_,
+      level: this.level_,
+      state: this.state,
+      hold: this.hold,
+      next: this.queue.slice(0, NEXT_PREVIEW),
+    }
+  }
+
   start(): void {
     this.board = createBoard()
     this.score_ = 0
@@ -59,6 +96,10 @@ export class Engine {
     this.level_ = 1
     this.dropTimer = 0
     this.softDropping = false
+    this.piece = null
+    this.hold = null
+    this.holdUsed = false
+    this.queue = []
     this.state = 'playing'
     this.spawn()
   }
@@ -88,9 +129,7 @@ export class Engine {
     this.tryMove({ x: this.piece.x + dir })
   }
 
-  /**
-   * v1 简单旋转：目标旋转态若碰撞则直接拒绝（无踢墙，SRS 留 v2）。
-   */
+  /** v1 简单旋转：目标旋转态若碰撞则直接拒绝（SRS 留 v2） */
   rotate(): void {
     if (this.state !== 'playing' || !this.piece) return
     this.tryMove({ rotation: (this.piece.rotation + 1) % 4 })
@@ -110,6 +149,20 @@ export class Engine {
     this.lockAndSpawn()
   }
 
+  /** Hold 暂存：当前块与暂存槽互换；每块落定前只能用一次 */
+  holdPiece(): void {
+    if (this.state !== 'playing' || !this.piece || this.holdUsed) return
+    const swap = this.hold
+    this.hold = this.piece.type
+    this.holdUsed = true
+    this.dropTimer = 0
+    if (swap === null) {
+      this.spawn()
+    } else {
+      this.setPiece(swap)
+    }
+  }
+
   private tryMove(delta: Partial<Pick<Piece, 'x' | 'y' | 'rotation'>>): void {
     const piece = this.piece!
     const candidate: Piece = { ...piece, ...delta }
@@ -118,7 +171,9 @@ export class Engine {
     }
   }
 
-  private collidesAt(delta: Partial<Pick<Piece, 'x' | 'y' | 'rotation'>>): boolean {
+  private collidesAt(
+    delta: Partial<Pick<Piece, 'x' | 'y' | 'rotation'>>,
+  ): boolean {
     const piece = this.piece!
     return collides(this.board, pieceCells({ ...piece, ...delta }))
   }
@@ -137,6 +192,7 @@ export class Engine {
     const locked = lockPiece(this.board, piece)
     this.board = locked.board
     this.dropTimer = 0
+    this.holdUsed = false
 
     if (locked.toppedOut) {
       this.state = 'over'
@@ -147,8 +203,7 @@ export class Engine {
     if (result.cleared > 0) {
       this.board = result.board
       this.lines_ += result.cleared
-      this.score_ +=
-        TUNING.lineScores[result.cleared] * this.level_
+      this.score_ += TUNING.lineScores[result.cleared] * this.level_
       this.level_ = 1 + Math.floor(this.lines_ / TUNING.linesPerLevel)
     }
 
@@ -156,7 +211,12 @@ export class Engine {
   }
 
   private spawn(): void {
-    const type = this.randomizer.next()
+    this.refillQueue()
+    const type = this.queue.shift()!
+    this.setPiece(type)
+  }
+
+  private setPiece(type: PieceType): void {
     const piece: Piece = {
       type,
       rotation: 0,
@@ -170,5 +230,11 @@ export class Engine {
       return
     }
     this.piece = piece
+  }
+
+  private refillQueue(): void {
+    while (this.queue.length < QUEUE_MIN) {
+      this.queue.push(this.randomizer.next())
+    }
   }
 }

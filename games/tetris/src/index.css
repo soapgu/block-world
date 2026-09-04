@@ -120,6 +120,40 @@ canvas.board {
   letter-spacing: 1px;
 }
 
+.icon-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 0;
+}
+
+.empty-slot {
+  color: #2f9e44;
+  font-size: 14px;
+}
+
+.next-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.piece-icon {
+  display: grid;
+  gap: 1px;
+}
+
+.mini-cell {
+  width: 10px;
+  height: 10px;
+}
+
+.mini-cell.on {
+  background: #39ff6e;
+  box-shadow: inset 0 0 0 1px #0a3a0a;
+}
+
 .back {
   margin-top: 24px;
   padding: 8px 20px;

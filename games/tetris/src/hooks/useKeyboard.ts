@@ -11,6 +11,9 @@ const TRACKED_KEYS = new Set([
   'Enter',
   'p',
   'P',
+  'Shift',
+  'c',
+  'C',
 ])
 
 /**
@@ -60,6 +63,11 @@ export function useKeyboard(engine: Engine): void {
           break
         case ' ':
           engine.hardDrop()
+          break
+        case 'Shift':
+        case 'c':
+        case 'C':
+          engine.holdPiece()
           break
         case 'p':
         case 'P':
