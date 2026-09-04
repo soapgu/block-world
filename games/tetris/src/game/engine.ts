@@ -73,6 +73,7 @@ export class Engine {
 
   constructor(options: EngineOptions = {}) {
     this.randomizer = options.randomizer ?? createRandomizer()
+    this.refillQueue() // ready 界面即可展示 Next 预览
   }
 
   get score(): number {
