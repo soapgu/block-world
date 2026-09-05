@@ -19,10 +19,15 @@ html, body {
   position: relative;
 }
 
-.mute-btn {
+.toolbar {
   position: absolute;
   top: 18px;
   right: 18px;
+  display: flex;
+  gap: 8px;
+}
+
+.tool-btn {
   width: 40px;
   height: 40px;
   background: #062006;
@@ -33,11 +38,35 @@ html, body {
   transition: all 0.15s;
 }
 
-.mute-btn:hover {
+.tool-btn:hover {
   background: #0a3a0a;
   border-color: #39ff6e;
   transform: translate(-1px, -1px);
   box-shadow: 5px 5px 0 #0a3a0a;
+}
+
+.tool-btn[aria-pressed='true'] {
+  border-color: #39ff6e;
+  color: #39ff6e;
+}
+
+.panel-value.newbest {
+  color: #9fff9f;
+  animation: newbest-blink 0.8s steps(2) infinite;
+}
+
+.overlay-newbest {
+  margin: 0;
+  font-size: 15px;
+  color: #9fff9f;
+  letter-spacing: 3px;
+  animation: newbest-blink 0.8s steps(2) infinite;
+}
+
+@keyframes newbest-blink {
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .title {

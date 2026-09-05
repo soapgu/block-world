@@ -5,10 +5,14 @@ export function StatsPanel({
   stats,
   hold,
   next,
+  best,
+  isNewBest,
 }: {
   stats: Stats
   hold: PieceType | null
   next: readonly PieceType[]
+  best: number
+  isNewBest: boolean
 }) {
   return (
     <aside className="panel">
@@ -26,6 +30,10 @@ export function StatsPanel({
       </div>
       <h2 className="panel-label">SCORE</h2>
       <p className="panel-value">{stats.score}</p>
+      <h2 className="panel-label">BEST</h2>
+      <p className={isNewBest ? 'panel-value newbest' : 'panel-value'}>
+        {best}
+      </p>
       <h2 className="panel-label">LEVEL</h2>
       <p className="panel-value">{stats.level}</p>
       <h2 className="panel-label">LINES</h2>
@@ -35,7 +43,9 @@ export function StatsPanel({
         <br />
         ↓ 软降 · 空格 硬降
         <br />
-        Shift 暂存 · P 暂停 · M 静音
+        Shift 暂存 · P 暂停
+        <br />
+        M 静音 · B 音乐
       </div>
     </aside>
   )

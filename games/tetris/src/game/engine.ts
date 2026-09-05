@@ -68,8 +68,25 @@ export class Engine {
   clearingRows: readonly number[] = []
   /** 消行动画已进行的时间（ms），渲染层据此闪烁 */
   clearTimer = 0
-  /** 可选事件监听：音效/特效从这里订阅 */
-  onEvent?: (event: GameEvent) => void
+  /** 事件监听器列表：音效/最高分等都从这里订阅，可多个共存 */
+  private listeners: Array<(event: GameEvent) => void> = []
+
+  /** 订阅游戏事件，返回退订函数 */
+  subscribe(listener: (event: GameEvent) => void): () => void {
+    this.listeners.push(listener)
+    return () => {
+      this.listeners = this.listeners.filter((l) => l !== listener)
+    }
+  }
+
+  /** 兼容单回调写法：赋值即订阅（覆盖旧值） */
+  set onEvent(listener: ((event: GameEvent) => void) | undefined) {
+    this.listeners = listener ? [listener] : []
+  }
+
+  get onEvent(): ((event: GameEvent) => void) | undefined {
+    return this.listeners[0]
+  }
 
   private score_ = 0
   private lines_ = 0
@@ -364,7 +381,7 @@ export class Engine {
   }
 
   private emit(event: GameEvent): void {
-    this.onEvent?.(event)
+    for (const listener of this.listeners) listener(event)
   }
 
   private refillQueue(): void {

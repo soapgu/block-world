@@ -13,6 +13,8 @@ const TRACKED_KEYS = new Set([
   'P',
   'm',
   'M',
+  'b',
+  'B',
   'Shift',
   'c',
   'C',
@@ -25,11 +27,12 @@ const TRACKED_KEYS = new Set([
 /**
  * 键盘输入 → 引擎命令。
  * 左右长按走自实现的 DAS（首延迟 + 自动重复），不依赖系统按键重复率。
- * onToggleMute 由外壳注入（M 静音键）。
+ * onToggleMute/onToggleBgm 由外壳注入（M/B 键）。
  */
 export function useKeyboard(
   engine: Engine,
   onToggleMute?: () => void,
+  onToggleBgm?: () => void,
 ): void {
   useEffect(() => {
     let dasDir: -1 | 0 | 1 = 0
@@ -93,6 +96,10 @@ export function useKeyboard(
         case 'M':
           onToggleMute?.()
           break
+        case 'b':
+        case 'B':
+          onToggleBgm?.()
+          break
         case 'Enter':
           if (engine.state === 'ready' || engine.state === 'over') {
             engine.start()
@@ -123,5 +130,5 @@ export function useKeyboard(
       stopDas()
       engine.setSoftDrop(false)
     }
-  }, [engine, onToggleMute])
+  }, [engine, onToggleMute, onToggleBgm])
 }

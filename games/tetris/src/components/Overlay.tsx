@@ -3,9 +3,13 @@ import type { EngineState } from '../game/types'
 export function Overlay({
   state,
   score,
+  best,
+  isNewBest,
 }: {
   state: EngineState
   score: number
+  best: number
+  isNewBest: boolean
 }) {
   if (state === 'playing') return null
 
@@ -22,6 +26,11 @@ export function Overlay({
     detail = (
       <>
         <p className="overlay-detail">得分 {score}</p>
+        {isNewBest && score > 0 ? (
+          <p className="overlay-newbest">★ 新纪录 ★</p>
+        ) : (
+          <p className="overlay-detail">最高分 {best}</p>
+        )}
         <p className="overlay-detail">按 回车 再来一局</p>
       </>
     )
