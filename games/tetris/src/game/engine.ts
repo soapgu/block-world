@@ -36,6 +36,18 @@ export interface UiSnapshot extends Stats {
   next: readonly PieceType[]
 }
 
+/** 引擎在关键节点派发的游戏事件（音效/特效从这里订阅，不参与游戏逻辑） */
+export type GameEvent =
+  | { type: 'move' }
+  | { type: 'rotate' }
+  | { type: 'hold' }
+  | { type: 'hardDrop' }
+  | { type: 'lock' }
+  | { type: 'clear'; lines: number } // 消 1~3 行
+  | { type: 'tetris' } // 四消
+  | { type: 'levelUp' }
+  | { type: 'gameOver' }
+
 export interface EngineOptions {
   /** 注入发牌器（测试用固定序列） */
   randomizer?: Randomizer
@@ -56,6 +68,8 @@ export class Engine {
   clearingRows: readonly number[] = []
   /** 消行动画已进行的时间（ms），渲染层据此闪烁 */
   clearTimer = 0
+  /** 可选事件监听：音效/特效从这里订阅 */
+  onEvent?: (event: GameEvent) => void
 
   private score_ = 0
   private lines_ = 0
@@ -173,6 +187,7 @@ export class Engine {
       this.piece = candidate
       this.lastActionWasRotation = false
       this.onPieceMoved()
+      this.emit({ type: 'move' })
     }
   }
 
@@ -187,6 +202,7 @@ export class Engine {
         this.piece = candidate
         this.lastActionWasRotation = true
         this.onPieceMoved()
+        this.emit({ type: 'rotate' })
         return
       }
     }
@@ -207,6 +223,7 @@ export class Engine {
     }
     this.score_ += cells * TUNING.hardDropBonus
     this.lastActionWasRotation = false
+    this.emit({ type: 'hardDrop' })
     this.lockAndSpawn()
   }
 
@@ -219,6 +236,7 @@ export class Engine {
     this.dropTimer = 0
     this.lockTimer = 0
     this.lockResets = 0
+    this.emit({ type: 'hold' })
     if (swap === null) {
       this.spawn()
     } else {
@@ -275,9 +293,11 @@ export class Engine {
     this.lockTimer = 0
     this.lockResets = 0
     this.holdUsed = false
+    this.emit({ type: 'lock' })
 
     if (locked.toppedOut) {
       this.state = 'over'
+      this.emit({ type: 'gameOver' })
       return
     }
 
@@ -290,7 +310,14 @@ export class Engine {
       } else {
         this.score_ += TUNING.lineScores[cleared] * this.level_
       }
+      const prevLevel = this.level_
       this.level_ = 1 + Math.floor(this.lines_ / TUNING.linesPerLevel)
+      if (cleared >= 4) {
+        this.emit({ type: 'tetris' })
+      } else {
+        this.emit({ type: 'clear', lines: cleared })
+      }
+      if (this.level_ > prevLevel) this.emit({ type: 'levelUp' })
       // 进入消行动画：棋盘保持塌落前状态供闪烁渲染
       this.clearingRows = result.clearedRows
       this.clearTimer = 0
@@ -330,9 +357,14 @@ export class Engine {
       // 出生点即被占死：游戏结束，但仍保留方块供最终画面渲染
       this.piece = piece
       this.state = 'over'
+      this.emit({ type: 'gameOver' })
       return
     }
     this.piece = piece
+  }
+
+  private emit(event: GameEvent): void {
+    this.onEvent?.(event)
   }
 
   private refillQueue(): void {

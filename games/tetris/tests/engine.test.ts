@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Engine } from '../src/game/engine'
+import type { GameEvent } from '../src/game/engine'
 import type { Randomizer } from '../src/game/randomizer'
 import type { Cell, PieceType } from '../src/game/types'
 
@@ -134,5 +135,71 @@ describe('消行动画', () => {
     expect(engine.board[19][0]).toBeNull()
     expect(engine.board[19][8]).toBe('O')
     expect(engine.piece).not.toBeNull()
+  })
+})
+
+describe('游戏事件', () => {
+  function collect(engine: Engine): GameEvent[] {
+    const events: GameEvent[] = []
+    engine.onEvent = (e) => events.push(e)
+    return events
+  }
+
+  it('移动与旋转成功时派发对应事件', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(SEQ) })
+    const events = collect(engine)
+    engine.start()
+    engine.moveX(1)
+    engine.rotate(1)
+    expect(events).toContainEqual({ type: 'move' })
+    expect(events).toContainEqual({ type: 'rotate' })
+  })
+
+  it('硬降依次派发 hardDrop 与 lock', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(['O']) })
+    const events = collect(engine)
+    engine.start()
+    engine.hardDrop()
+    expect(events).toEqual([{ type: 'hardDrop' }, { type: 'lock' }])
+  })
+
+  it('消行派发带行数的 clear 事件', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(['O']) })
+    const events = collect(engine)
+    engine.start()
+    engine.board[19] = [...Array(8).fill('J'), null, null] as Cell[]
+    for (let i = 0; i < 4; i++) engine.moveX(1)
+    engine.hardDrop()
+    expect(events).toContainEqual({ type: 'lock' })
+    expect(events).toContainEqual({ type: 'clear', lines: 1 })
+  })
+
+  it('四消派发 tetris 而非 clear', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(['I']) })
+    const events = collect(engine)
+    engine.start()
+    // 右侧留一条一格宽的井：16~19 行只空 (9,y)
+    for (let y = 16; y < 20; y++) {
+      engine.board[y] = [...Array(9).fill('J'), null] as Cell[]
+    }
+    engine.rotate(1) // I 竖置（cells 落在包围盒 col 2）
+    for (let i = 0; i < 4; i++) engine.moveX(1) // x 3→7，竖条对准 col 9
+    engine.hardDrop()
+    expect(events).toContainEqual({ type: 'tetris' })
+    expect(events).not.toContainEqual({ type: 'clear', lines: 4 })
+    expect(engine.lines).toBe(4)
+  })
+
+  it('堆到出生点派发 gameOver', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(['T', 'I']) })
+    const events = collect(engine)
+    engine.start()
+    // 填满棋盘但每行留 col 9 空位（不会形成满行）
+    for (let y = 0; y < 20; y++) {
+      engine.board[y] = [...Array(9).fill('J'), null] as Cell[]
+    }
+    engine.hardDrop() // T 原地锁定；下一块 I 出生即碰撞
+    expect(engine.state).toBe('over')
+    expect(events).toContainEqual({ type: 'gameOver' })
   })
 })

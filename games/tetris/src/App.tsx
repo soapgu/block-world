@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BoardCanvas } from './components/BoardCanvas'
 import { Overlay } from './components/Overlay'
 import { StatsPanel } from './components/StatsPanel'
@@ -6,7 +6,18 @@ import { Engine } from './game/engine'
 import type { UiSnapshot } from './game/engine'
 import { useGameLoop } from './hooks/useGameLoop'
 import { useKeyboard } from './hooks/useKeyboard'
+import { useSound } from './hooks/useSound'
 import { boardPixelHeight, boardPixelWidth, drawGame } from './render/canvas'
+
+const MUTED_KEY = 'tetris:muted'
+
+function readMuted(): boolean {
+  try {
+    return localStorage.getItem(MUTED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 function sameUi(a: UiSnapshot, b: UiSnapshot): boolean {
   return (
@@ -26,6 +37,17 @@ export default function App() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [ui, setUi] = useState<UiSnapshot>(() => engine.getUiSnapshot())
+  const [muted, setMuted] = useState(readMuted)
+
+  const toggleMute = useCallback(() => setMuted((m) => !m), [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(MUTED_KEY, muted ? '1' : '0')
+    } catch {
+      // 隐私模式等场景下写入失败可接受
+    }
+  }, [muted])
 
   // 按设备像素比设置画布物理尺寸，保证高清屏下清晰
   useEffect(() => {
@@ -36,7 +58,8 @@ export default function App() {
     canvas.height = boardPixelHeight() * dpr
   }, [])
 
-  useKeyboard(engine)
+  useKeyboard(engine, toggleMute)
+  useSound(engine, muted)
 
   useGameLoop((dt) => {
     engine.update(dt)
@@ -55,8 +78,16 @@ export default function App() {
 
   return (
     <div className="page">
+      <button
+        className="mute-btn"
+        onClick={toggleMute}
+        aria-pressed={muted}
+        title={muted ? '开启音效（M）' : '静音（M）'}
+      >
+        {muted ? '🔇' : '🔊'}
+      </button>
       <h1 className="title">俄罗斯方块</h1>
-      <p className="sub">TETRIS · V2</p>
+      <p className="sub">TETRIS · V3</p>
       <div className="game-shell">
         <div className="board-wrap">
           <BoardCanvas canvasRef={canvasRef} />

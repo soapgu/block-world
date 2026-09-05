@@ -16,6 +16,28 @@ html, body {
   padding: 24px;
   text-align: center;
   box-sizing: border-box;
+  position: relative;
+}
+
+.mute-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  background: #062006;
+  border: 2px solid #2f9e44;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 #0a3a0a;
+  transition: all 0.15s;
+}
+
+.mute-btn:hover {
+  background: #0a3a0a;
+  border-color: #39ff6e;
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 #0a3a0a;
 }
 
 .title {

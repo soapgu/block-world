@@ -31,11 +31,11 @@ export function StatsPanel({
       <h2 className="panel-label">LINES</h2>
       <p className="panel-value">{stats.lines}</p>
       <div className="help">
-        ← → 移动 · ↑ 旋转
+        ← → 移动 · ↑/X 旋转 · Z 反转
         <br />
         ↓ 软降 · 空格 硬降
         <br />
-        Shift 暂存 · P 暂停
+        Shift 暂存 · P 暂停 · M 静音
       </div>
     </aside>
   )
