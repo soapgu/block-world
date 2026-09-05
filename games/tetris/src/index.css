@@ -88,18 +88,26 @@ html, body {
 .game-shell {
   display: flex;
   gap: 20px;
-  align-items: flex-start;
+  /* 面板拉伸到与棋盘等高，两边视觉对齐 */
+  align-items: stretch;
 }
 
 .board-wrap {
   position: relative;
+  display: flex;
+  align-items: stretch;
 }
 
 .board-frame {
+  /* 填满拉伸后的容器，画布在其中垂直居中（多出的高度成为上下留白） */
+  display: flex;
+  align-items: center;
+  flex: 1;
   padding: 8px;
   background: #062006;
   border: 2px solid #2f9e44;
   box-shadow: 4px 4px 0 #0a3a0a;
+  box-sizing: border-box;
 }
 
 canvas.board {
@@ -164,7 +172,9 @@ canvas.board {
 }
 
 .help {
-  margin-top: 18px;
+  /* 面板拉伸等高后，帮助文案沉底，让面板内容上下铺满 */
+  margin-top: auto;
+  padding-top: 16px;
   font-size: 11px;
   line-height: 1.9;
   color: #2f9e44;
