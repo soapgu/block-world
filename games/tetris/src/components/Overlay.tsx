@@ -5,11 +5,14 @@ export function Overlay({
   score,
   best,
   isNewBest,
+  onTapStart,
 }: {
   state: EngineState
   score: number
   best: number
   isNewBest: boolean
+  /** 点按遮罩：移动端等效回车（开始/重开） */
+  onTapStart?: () => void
 }) {
   if (state === 'playing') return null
 
@@ -17,7 +20,7 @@ export function Overlay({
   let detail: JSX.Element
   if (state === 'ready') {
     title = '俄罗斯方块'
-    detail = <p className="overlay-detail">按 回车 开始</p>
+    detail = <p className="overlay-detail">按 回车 / 点按 开始</p>
   } else if (state === 'paused') {
     title = '暂停'
     detail = <p className="overlay-detail">按 P 继续</p>
@@ -31,13 +34,18 @@ export function Overlay({
         ) : (
           <p className="overlay-detail">最高分 {best}</p>
         )}
-        <p className="overlay-detail">按 回车 再来一局</p>
+        <p className="overlay-detail">按 回车 / 点按 再来一局</p>
       </>
     )
   }
 
   return (
-    <div className="overlay">
+    <div
+      className="overlay"
+      role="button"
+      aria-label="开始或重开"
+      onClick={onTapStart}
+    >
       <h1 className="overlay-title">{title}</h1>
       {detail}
     </div>

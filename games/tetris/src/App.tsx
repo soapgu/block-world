@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BoardCanvas } from './components/BoardCanvas'
+import { CompactBar } from './components/CompactBar'
 import { Overlay } from './components/Overlay'
 import { StatsPanel } from './components/StatsPanel'
+import { TouchControls } from './components/TouchControls'
 import { bgm } from './audio/bgm'
 import { Engine } from './game/engine'
 import type { UiSnapshot } from './game/engine'
@@ -52,6 +54,10 @@ export default function App() {
   const [muted, setMuted] = useState(() => readFlag(MUTED_KEY))
   const [bgmOn, setBgmOn] = useState(() => readFlag(BGM_KEY))
   const [best, isNewBest] = useBestScore(engine)
+  // 触屏设备才渲染虚拟按键与精简信息条（CSS 断点控制具体布局）
+  const [isTouch] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches,
+  )
 
   const toggleMute = useCallback(() => setMuted((m) => !m), [])
   const toggleBgm = useCallback(() => setBgmOn((b) => !b), [])
@@ -94,7 +100,7 @@ export default function App() {
   })
 
   return (
-    <div className="page">
+    <div className={isTouch ? 'page touch' : 'page'}>
       <div className="toolbar">
         <button
           className="tool-btn"
@@ -115,16 +121,28 @@ export default function App() {
       </div>
       <h1 className="title">俄罗斯方块</h1>
       <p className="sub">TETRIS · V3</p>
+      {isTouch && <CompactBar stats={ui} hold={ui.hold} next={ui.next} />}
       <div className="game-shell">
         <div className="board-wrap">
           <BoardCanvas canvasRef={canvasRef} />
-          <Overlay state={ui.state} score={ui.score} best={best} isNewBest={isNewBest} />
+          <Overlay
+            state={ui.state}
+            score={ui.score}
+            best={best}
+            isNewBest={isNewBest}
+            onTapStart={() => {
+              if (engine.state === 'ready' || engine.state === 'over') engine.start()
+            }}
+          />
         </div>
-        <StatsPanel stats={ui} hold={ui.hold} next={ui.next} best={best} isNewBest={isNewBest} />
+        {!isTouch && (
+          <StatsPanel stats={ui} hold={ui.hold} next={ui.next} best={best} isNewBest={isNewBest} />
+        )}
       </div>
       <a className="back" href="../../index.html">
         ← 返回方块世界
       </a>
+      {isTouch && <TouchControls engine={engine} />}
     </div>
   )
 }

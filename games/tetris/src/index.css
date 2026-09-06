@@ -4,6 +4,8 @@ html, body {
   background: #041a04;
   font-family: "Courier New", monospace;
   color: #9fff9f;
+  /* 禁双击缩放（移动端）；不影响桌面 */
+  touch-action: manipulation;
 }
 
 .page {
@@ -112,6 +114,9 @@ html, body {
 
 canvas.board {
   display: block;
+  width: 240px; /* 桌面默认；触屏窄屏由下方规则覆盖 */
+  max-width: 100%;
+  height: auto;
 }
 
 .overlay {
@@ -233,4 +238,147 @@ canvas.board {
   border-color: #39ff6e;
   transform: translate(-1px, -1px);
   box-shadow: 6px 6px 0 #0a3a0a;
+}
+
+/* ===== 移动端（触屏 · 竖屏优先）===== */
+
+/* 精简信息条：仅触屏布局渲染 */
+.compact-bar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  max-width: 340px;
+  padding: 6px 12px;
+  margin-bottom: 12px;
+  background: #062006;
+  border: 2px solid #2f9e44;
+  box-shadow: 3px 3px 0 #0a3a0a;
+  box-sizing: border-box;
+}
+
+.cb-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cb-label {
+  font-size: 10px;
+  color: #4da6ff;
+  letter-spacing: 1px;
+}
+
+.cb-icon {
+  min-width: 30px;
+  display: flex;
+  justify-content: center;
+}
+
+.cb-empty {
+  color: #2f9e44;
+  font-size: 12px;
+}
+
+.cb-stats {
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.cb-stat {
+  font-size: 18px;
+  color: #39ff6e;
+}
+
+.cb-dim {
+  font-size: 11px;
+  color: #9fff9f;
+}
+
+/* 触屏页面：内容上移给底部按键区留空间 */
+.page.touch {
+  padding-bottom: 150px;
+}
+
+.page.touch .title {
+  font-size: 24px;
+}
+
+.page.touch .sub {
+  margin-bottom: 10px;
+}
+
+/* 棋盘自适应：宽度撑满（留边距），高度不超视口 55% */
+.page.touch .game-shell {
+  align-items: center;
+}
+
+.page.touch canvas.board {
+  width: min(calc(100vw - 32px), 55vh / 2);
+  max-width: 300px;
+}
+
+.page.touch .back {
+  margin-top: 14px;
+  font-size: 11px;
+  padding: 6px 14px;
+}
+
+/* 底部虚拟按键：两簇 + 中间暂停 */
+.touch-controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: rgba(4, 26, 4, 0.92);
+  border-top: 2px solid #2f9e44;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 10;
+}
+
+.tc-cluster {
+  display: flex;
+  gap: 10px;
+}
+
+.tc-btn {
+  width: 56px;
+  height: 56px;
+  background: #062006;
+  border: 2px solid #2f9e44;
+  color: #9fff9f;
+  font-size: 22px;
+  line-height: 1;
+  box-shadow: 3px 3px 0 #0a3a0a;
+  touch-action: none; /* 按键不触发浏览器手势 */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tc-btn:active {
+  background: #0a3a0a;
+  border-color: #39ff6e;
+  color: #39ff6e;
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #0a3a0a;
+}
+
+.tc-primary {
+  border-color: #4da6ff;
+}
+
+.tc-pause {
+  width: 46px;
+  height: 46px;
+  font-size: 15px;
+  align-self: center;
 }
