@@ -9,9 +9,10 @@ const REPEAT_DELAY_MS = 200
 type RepeatAction = () => void
 
 /**
- * 底部虚拟按键：pointerdown 触发命令，移动键长按自动重复；
- * pointerup/cancel/leave 一律停止。软降按住期间持续生效（与键盘一致）。
- * 只调用引擎命令层，零引擎改动；音效经 GameEvent 自动生效。
+ * 底部虚拟按键（两层精简布局）：
+ * 上层 ←↓→ 十字键，下层 旋转/硬降 宽键；Hold 与暂停收在顶部工具栏。
+ * pointerdown 触发命令，移动键长按自动重复；pointerup/cancel 一律停止。
+ * 软降按住期间持续生效（与键盘语义一致）；只调用引擎命令层，零引擎改动。
  */
 export function TouchControls({ engine }: { engine: Engine }) {
   const repeatTimer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -26,7 +27,7 @@ export function TouchControls({ engine }: { engine: Engine }) {
 
   useEffect(() => stopRepeat, [])
 
-  /** 单发命令（旋转/硬降/Hold/暂停） */
+  /** 单发命令（旋转/硬降） */
   const fire = (action: RepeatAction) => (e: React.PointerEvent) => {
     e.preventDefault()
     action()
@@ -51,7 +52,7 @@ export function TouchControls({ engine }: { engine: Engine }) {
 
   return (
     <div className="touch-controls" onPointerUp={stopRepeat} onPointerCancel={stopRepeat}>
-      <div className="tc-cluster">
+      <div className="tc-row">
         <button className="tc-btn" onPointerDown={fireRepeat(() => engine.moveX(-1))} aria-label="左移">
           ←
         </button>
@@ -62,18 +63,12 @@ export function TouchControls({ engine }: { engine: Engine }) {
           →
         </button>
       </div>
-      <button className="tc-btn tc-pause" onPointerDown={fire(() => engine.togglePause())} aria-label="暂停">
-        ❚❚
-      </button>
-      <div className="tc-cluster">
-        <button className="tc-btn" onPointerDown={fire(() => engine.holdPiece())} aria-label="暂存">
-          ⎋
+      <div className="tc-row">
+        <button className="tc-btn tc-wide" onPointerDown={fire(() => engine.rotate(1))} aria-label="旋转">
+          ↻ 旋转
         </button>
-        <button className="tc-btn" onPointerDown={fire(() => engine.hardDrop())} aria-label="硬降">
-          ⤓
-        </button>
-        <button className="tc-btn tc-primary" onPointerDown={fire(() => engine.rotate(1))} aria-label="旋转">
-          ↻
+        <button className="tc-btn tc-wide tc-primary" onPointerDown={fire(() => engine.hardDrop())} aria-label="硬降">
+          ⤓ 硬降
         </button>
       </div>
     </div>

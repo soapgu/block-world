@@ -102,6 +102,26 @@ export default function App() {
   return (
     <div className={isTouch ? 'page touch' : 'page'}>
       <div className="toolbar">
+        {isTouch && (
+          <>
+            <button
+              className="tool-btn"
+              onClick={() => engine.holdPiece()}
+              aria-label="暂存"
+              title="暂存 Hold"
+            >
+              ⎋
+            </button>
+            <button
+              className="tool-btn"
+              onClick={() => engine.togglePause()}
+              aria-label="暂停"
+              title="暂停/继续"
+            >
+              ❚❚
+            </button>
+          </>
+        )}
         <button
           className="tool-btn"
           onClick={toggleBgm}

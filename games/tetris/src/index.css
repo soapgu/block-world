@@ -299,7 +299,7 @@ canvas.board {
 
 /* 触屏页面：内容上移给底部按键区留空间 */
 .page.touch {
-  padding-bottom: 150px;
+  padding-bottom: 190px;
 }
 
 .page.touch .title {
@@ -326,15 +326,14 @@ canvas.board {
   padding: 6px 14px;
 }
 
-/* 底部虚拟按键：两簇 + 中间暂停 */
+/* 底部虚拟按键：两层布局（上层十字键 + 下层宽动作键） */
 .touch-controls {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
   background: rgba(4, 26, 4, 0.92);
@@ -344,24 +343,32 @@ canvas.board {
   z-index: 10;
 }
 
-.tc-cluster {
+.tc-row {
   display: flex;
-  gap: 10px;
+  justify-content: center;
+  gap: 12px;
 }
 
 .tc-btn {
-  width: 56px;
-  height: 56px;
+  width: 62px;
+  height: 62px;
   background: #062006;
   border: 2px solid #2f9e44;
   color: #9fff9f;
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1;
   box-shadow: 3px 3px 0 #0a3a0a;
   touch-action: none; /* 按键不触发浏览器手势 */
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* 下层宽动作键：带文字标签 */
+.tc-btn.tc-wide {
+  width: 132px;
+  font-size: 16px;
+  letter-spacing: 2px;
 }
 
 .tc-btn:active {
@@ -374,11 +381,4 @@ canvas.board {
 
 .tc-primary {
   border-color: #4da6ff;
-}
-
-.tc-pause {
-  width: 46px;
-  height: 46px;
-  font-size: 15px;
-  align-self: center;
 }
