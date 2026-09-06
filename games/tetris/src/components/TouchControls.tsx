@@ -9,8 +9,8 @@ const REPEAT_DELAY_MS = 200
 type RepeatAction = () => void
 
 /**
- * 底部虚拟按键（两层精简布局）：
- * 上层 ←↓→ 十字键，下层 旋转/硬降 宽键；Hold 与暂停收在顶部工具栏。
+ * 底部虚拟按键（经典掌机混合布局）：
+ * 左侧倒 T 形方向区，右侧大旋转键 + 小硬降键；Hold 与暂停收在顶部工具栏。
  * pointerdown 触发命令，移动键长按自动重复；pointerup/cancel 一律停止。
  * 软降按住期间持续生效（与键盘语义一致）；只调用引擎命令层，零引擎改动。
  */
@@ -25,7 +25,18 @@ export function TouchControls({ engine }: { engine: Engine }) {
     repeatTimer.current = null
   }
 
-  useEffect(() => stopRepeat, [])
+  const stopAll = () => {
+    stopRepeat()
+    engine.setSoftDrop(false)
+  }
+
+  useEffect(
+    () => () => {
+      stopRepeat()
+      engine.setSoftDrop(false)
+    },
+    [engine],
+  )
 
   /** 单发命令（旋转/硬降） */
   const fire = (action: RepeatAction) => (e: React.PointerEvent) => {
@@ -51,25 +62,42 @@ export function TouchControls({ engine }: { engine: Engine }) {
   const softUp = () => engine.setSoftDrop(false)
 
   return (
-    <div className="touch-controls" onPointerUp={stopRepeat} onPointerCancel={stopRepeat}>
-      <div className="tc-row">
-        <button className="tc-btn" onPointerDown={fireRepeat(() => engine.moveX(-1))} aria-label="左移">
-          ←
-        </button>
-        <button className="tc-btn" onPointerDown={softDown} onPointerUp={softUp} onPointerCancel={softUp} aria-label="软降">
-          ↓
-        </button>
-        <button className="tc-btn" onPointerDown={fireRepeat(() => engine.moveX(1))} aria-label="右移">
-          →
-        </button>
-      </div>
-      <div className="tc-row">
-        <button className="tc-btn tc-wide" onPointerDown={fire(() => engine.rotate(1))} aria-label="旋转">
-          ↻ 旋转
-        </button>
-        <button className="tc-btn tc-wide tc-primary" onPointerDown={fire(() => engine.hardDrop())} aria-label="硬降">
-          ⤓ 硬降
-        </button>
+    <div
+      className="touch-controls"
+      onPointerUp={stopAll}
+      onPointerCancel={stopAll}
+      onPointerLeave={stopAll}
+    >
+      <div className="tc-deck">
+        <div className="tc-direction" aria-label="方向控制">
+          <div className="tc-direction-row">
+            <button className="tc-btn" onPointerDown={fireRepeat(() => engine.moveX(-1))} aria-label="左移">
+              ←
+            </button>
+            <button className="tc-btn" onPointerDown={fireRepeat(() => engine.moveX(1))} aria-label="右移">
+              →
+            </button>
+          </div>
+          <button
+            className="tc-btn tc-down"
+            onPointerDown={softDown}
+            onPointerUp={softUp}
+            onPointerCancel={softUp}
+            aria-label="软降"
+          >
+            ↓
+          </button>
+        </div>
+        <div className="tc-actions">
+          <button className="tc-btn tc-rotate" onPointerDown={fire(() => engine.rotate(1))} aria-label="旋转">
+            <span className="tc-action-icon">↻</span>
+            <span className="tc-action-label">旋转</span>
+          </button>
+          <button className="tc-btn tc-hard-drop" onPointerDown={fire(() => engine.hardDrop())} aria-label="硬降">
+            <span>⤓</span>
+            <span className="tc-action-label">硬降</span>
+          </button>
+        </div>
       </div>
     </div>
   )

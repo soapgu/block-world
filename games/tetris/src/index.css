@@ -8,14 +8,21 @@ html, body {
   touch-action: manipulation;
 }
 
+html.tetris-touch,
+html.tetris-touch body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 .page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 24px;
+  /* 顶部对齐压缩上方空间（原垂直居中浪费顶部） */
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 12px 24px 16px;
   text-align: center;
   box-sizing: border-box;
   position: relative;
@@ -25,6 +32,10 @@ html, body {
   position: absolute;
   top: 18px;
   right: 18px;
+  display: flex;
+}
+
+.toolbar-group {
   display: flex;
   gap: 8px;
 }
@@ -73,7 +84,7 @@ html, body {
 
 .title {
   margin: 0;
-  font-size: 32px;
+  font-size: 26px;
   font-weight: bold;
   color: #39ff6e;
   text-shadow: 3px 3px 0 #0a3a0a;
@@ -81,8 +92,8 @@ html, body {
 }
 
 .sub {
-  margin: 0 0 20px 0;
-  font-size: 13px;
+  margin: 0 0 10px 0;
+  font-size: 12px;
   color: #4da6ff;
   letter-spacing: 4px;
 }
@@ -101,9 +112,11 @@ html, body {
 }
 
 .board-frame {
-  /* 填满拉伸后的容器，画布在其中垂直居中（多出的高度成为上下留白） */
+  /* Overlay 挂在本层内：相对定位；填满拉伸容器且画布垂直居中 */
+  position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
   flex: 1;
   padding: 8px;
   background: #062006;
@@ -128,6 +141,7 @@ canvas.board {
   justify-content: center;
   gap: 10px;
   background: rgba(4, 26, 4, 0.88);
+  z-index: 2; /* 置于扫描线覆盖层之上 */
 }
 
 .overlay-title {
@@ -151,12 +165,14 @@ canvas.board {
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  min-width: 150px;
+  /* 固定宽度：分数位数变化不引起面板/布局横向跳动 */
+  width: 168px;
   padding: 14px 18px;
   background: #062006;
   border: 2px solid #2f9e44;
   box-shadow: 4px 4px 0 #0a3a0a;
   text-align: left;
+  box-sizing: border-box;
 }
 
 .panel-label {
@@ -173,6 +189,9 @@ canvas.board {
 .panel-value {
   margin: 0;
   font-size: 24px;
+  line-height: 1.2;
+  /* 锁定数值行高：内容变化（位数/新纪录类切换）不引起高度跳动 */
+  min-height: 29px;
   color: #39ff6e;
 }
 
@@ -190,13 +209,17 @@ canvas.board {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 26px;
+  /* 槽位高度恒定：空占位与真实方块图标同高，开局不引起面板/棋盘跳动 */
+  height: 26px;
+  box-sizing: content-box;
   padding: 3px 0;
 }
 
 .empty-slot {
   color: #2f9e44;
   font-size: 14px;
+  /* 与 mini-cell（10px + 1px 间隙）两行高度对齐 */
+  line-height: 21px;
 }
 
 .next-list {
@@ -246,11 +269,12 @@ canvas.board {
 .compact-bar {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 8px;
   width: 100%;
   max-width: 340px;
-  padding: 6px 12px;
-  margin-bottom: 12px;
+  height: 56px;
+  padding: 4px 12px;
+  margin-bottom: 6px;
   background: #062006;
   border: 2px solid #2f9e44;
   box-shadow: 3px 3px 0 #0a3a0a;
@@ -270,9 +294,12 @@ canvas.board {
 }
 
 .cb-icon {
-  min-width: 30px;
+  width: 43px;
+  height: 43px;
+  flex: 0 0 43px;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .cb-empty {
@@ -282,9 +309,12 @@ canvas.board {
 
 .cb-stats {
   margin-left: auto;
+  min-width: 100px;
   display: flex;
   align-items: baseline;
+  justify-content: flex-end;
   gap: 8px;
+  font-variant-numeric: tabular-nums;
 }
 
 .cb-stat {
@@ -299,59 +329,154 @@ canvas.board {
 
 /* 触屏页面：内容上移给底部按键区留空间 */
 .page.touch {
-  padding-bottom: 190px;
+  --touch-controls-height: calc(168px + env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  height: var(--game-viewport-height, 100svh);
+  min-height: 0;
+  max-height: var(--game-viewport-height, 100svh);
+  padding: 8px 14px var(--touch-controls-height);
+  justify-content: flex-start;
+  gap: 0;
+  overflow: hidden;
+  /* 游戏操作中的长按不触发文字选择或系统复制菜单 */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
-.page.touch .title {
-  font-size: 24px;
-}
-
-.page.touch .sub {
-  margin-bottom: 10px;
-}
-
-/* 棋盘自适应：宽度撑满（留边距），高度不超视口 55% */
-.page.touch .game-shell {
+.page.touch .toolbar {
+  position: static;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
+  width: 100%;
+  max-width: 340px;
+  min-height: 36px;
+  margin-bottom: 6px;
+}
+
+.page.touch .tool-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.page.touch .toolbar-group {
+  gap: 4px;
+}
+
+.page.touch .toolbar-game .tool-btn:first-child {
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0;
+}
+
+.mobile-title {
+  min-width: 0;
+  margin: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  color: #39ff6e;
+  font-size: clamp(18px, 5.2vw, 22px);
+  line-height: 1;
+  font-weight: bold;
+  letter-spacing: clamp(2px, 0.8vw, 4px);
+  text-shadow: 2px 2px 0 #0a3a0a;
+  white-space: nowrap;
+}
+
+/* 中间机身占据固定视口扣除顶部和按键区后的剩余空间 */
+.page.touch .console-body {
+  width: min(calc(100vw - 32px), 336px);
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px 8px;
+  box-sizing: border-box;
+}
+
+.page.touch .game-shell {
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.page.touch .board-wrap {
+  height: 100%;
+  min-height: 0;
+  max-width: 100%;
+  aspect-ratio: 1 / 2;
+}
+
+.page.touch .board-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
 .page.touch canvas.board {
-  width: min(calc(100vw - 32px), 55vh / 2);
-  max-width: 300px;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .page.touch .back {
-  margin-top: 14px;
+  margin-top: 8px;
+  margin-bottom: 0;
   font-size: 11px;
-  padding: 6px 14px;
+  padding: 4px 10px;
 }
 
-/* 底部虚拟按键：两层布局（上层十字键 + 下层宽动作键） */
+/* 底部虚拟按键：经典掌机的左方向区 + 右旋转键 */
 .touch-controls {
-  position: fixed;
+  /* 锚定锁高后的游戏页，而不是跟随浏览器动态视口上下移动 */
+  position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
   background: rgba(4, 26, 4, 0.92);
   border-top: 2px solid #2f9e44;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
   z-index: 10;
 }
 
-.tc-row {
+.tc-deck {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tc-direction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.tc-direction-row {
   display: flex;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
+}
+
+.tc-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .tc-btn {
-  width: 62px;
-  height: 62px;
+  width: 56px;
+  height: 56px;
   background: #062006;
   border: 2px solid #2f9e44;
   color: #9fff9f;
@@ -364,11 +489,47 @@ canvas.board {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 下层宽动作键：带文字标签 */
-.tc-btn.tc-wide {
-  width: 132px;
-  font-size: 16px;
-  letter-spacing: 2px;
+.tc-direction-row .tc-btn {
+  width: 64px;
+  height: 64px;
+}
+
+.tc-down {
+  width: 48px;
+  height: 48px;
+  font-size: 21px;
+}
+
+.tc-rotate {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-color: #39ff6e;
+}
+
+.tc-action-icon {
+  font-size: 28px;
+}
+
+.tc-action-label {
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.tc-hard-drop {
+  width: 68px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-color: #4da6ff;
+  font-size: 17px;
 }
 
 .tc-btn:active {
@@ -379,6 +540,127 @@ canvas.board {
   box-shadow: 1px 1px 0 #0a3a0a;
 }
 
-.tc-primary {
-  border-color: #4da6ff;
+@media (max-width: 340px) {
+  .touch-controls {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .tc-deck {
+    gap: 12px;
+  }
+
+
+  .tc-direction-row {
+    gap: 8px;
+  }
+
+  .tc-direction-row .tc-btn {
+    width: 60px;
+    height: 60px;
+  }
+
+  .tc-down {
+    width: 44px;
+    height: 44px;
+  }
+
+  .tc-actions {
+    gap: 8px;
+  }
+
+  .tc-rotate {
+    width: 76px;
+    height: 76px;
+  }
+
+  .tc-hard-drop {
+    width: 60px;
+    height: 48px;
+  }
+}
+
+/* ===== 复古掌机机身（v3.4 LCD 皮肤）===== */
+
+.console-body {
+  padding: 14px 18px 12px;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #1c2a1e 0%, #16211a 55%, #101a13 100%);
+  /* 塑料厚度：外投影 + 内高光 + 边缘暗线 */
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(159, 255, 159, 0.18),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.45),
+    0 0 0 1px #0c1410;
+}
+
+.console-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+/* 丝印小字 */
+.console-print {
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: #4a6b4e;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* 装饰螺丝：十字槽圆点 */
+.console-screw {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #3d5242, #1a2418 70%);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(159, 255, 159, 0.08);
+  position: relative;
+}
+
+.console-screw::after {
+  content: '';
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: 50%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.65);
+  transform: translateY(-0.5px) rotate(38deg);
+}
+
+.console-foot {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 8px;
+  color: #4a6b4e;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* 液晶屏覆盖层：扫描线 + 轻噪点（纯视觉，不拦截交互） */
+.board-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.09) 0px,
+      rgba(0, 0, 0, 0.09) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(
+      ellipse at 50% 40%,
+      transparent 60%,
+      rgba(0, 0, 0, 0.18) 100%
+    );
+  z-index: 1; /* 只压 canvas，遮罩层（z-index:2）在它之上 */
+  border-radius: 2px;
 }

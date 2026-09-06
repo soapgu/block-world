@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { BoardCanvas } from './components/BoardCanvas'
 import { CompactBar } from './components/CompactBar'
 import { Overlay } from './components/Overlay'
@@ -16,6 +17,11 @@ import { boardPixelHeight, boardPixelWidth, drawGame } from './render/canvas'
 
 const MUTED_KEY = 'tetris:muted'
 const BGM_KEY = 'tetris:bgm'
+
+function readViewportHeight(): number {
+  if (typeof window === 'undefined') return 800
+  return Math.round(window.visualViewport?.height ?? window.innerHeight)
+}
 
 function readFlag(key: string): boolean {
   try {
@@ -58,12 +64,36 @@ export default function App() {
   const [isTouch] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches,
   )
+  const [viewportHeight, setViewportHeight] = useState(readViewportHeight)
 
   const toggleMute = useCallback(() => setMuted((m) => !m), [])
   const toggleBgm = useCallback(() => setBgmOn((b) => !b), [])
 
   useEffect(() => writeFlag(MUTED_KEY, muted), [muted])
   useEffect(() => writeFlag(BGM_KEY, bgmOn), [bgmOn])
+
+  // 锁定手机进入页面时的可用高度，避免浏览器地址栏收放导致棋盘缩放跳动。
+  // 只有横竖屏方向真正变化时才重新采样。
+  useEffect(() => {
+    if (!isTouch) return
+
+    document.documentElement.classList.add('tetris-touch')
+    const orientation = window.matchMedia('(orientation: portrait)')
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const updateAfterRotation = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => setViewportHeight(readViewportHeight()), 150)
+    }
+
+    orientation.addEventListener?.('change', updateAfterRotation)
+    window.addEventListener('orientationchange', updateAfterRotation)
+    return () => {
+      if (timer) clearTimeout(timer)
+      document.documentElement.classList.remove('tetris-touch')
+      orientation.removeEventListener?.('change', updateAfterRotation)
+      window.removeEventListener('orientationchange', updateAfterRotation)
+    }
+  }, [isTouch])
 
   // BGM：仅在游戏中循环，暂停/结束停止；M 静音由主音量统一控制
   useEffect(() => {
@@ -100,68 +130,97 @@ export default function App() {
   })
 
   return (
-    <div className={isTouch ? 'page touch' : 'page'}>
+    <div
+      className={isTouch ? 'page touch' : 'page'}
+      style={
+        isTouch
+          ? ({ '--game-viewport-height': `${viewportHeight}px` } as CSSProperties)
+          : undefined
+      }
+    >
       <div className="toolbar">
-        {isTouch && (
-          <>
+        <div className="toolbar-group toolbar-game">
+          {isTouch && (
+            <>
             <button
               className="tool-btn"
               onClick={() => engine.holdPiece()}
               aria-label="暂存"
               title="暂存 Hold"
             >
-              ⎋
+              HOLD
             </button>
             <button
               className="tool-btn"
               onClick={() => engine.togglePause()}
-              aria-label="暂停"
-              title="暂停/继续"
+              aria-label={ui.state === 'paused' ? '继续' : '暂停'}
+              title={ui.state === 'paused' ? '继续游戏' : '暂停游戏'}
             >
-              ❚❚
+              {ui.state === 'paused' ? '▶' : 'Ⅱ'}
             </button>
-          </>
-        )}
-        <button
-          className="tool-btn"
-          onClick={toggleBgm}
-          aria-pressed={bgmOn}
-          title={bgmOn ? '关闭 BGM（B）' : '开启 BGM（B）'}
-        >
-          {bgmOn ? '🎵' : '🎶'}
-        </button>
-        <button
-          className="tool-btn"
-          onClick={toggleMute}
-          aria-pressed={muted}
-          title={muted ? '开启音效（M）' : '静音（M）'}
-        >
-          {muted ? '🔇' : '🔊'}
-        </button>
-      </div>
-      <h1 className="title">俄罗斯方块</h1>
-      <p className="sub">TETRIS · V3</p>
-      {isTouch && <CompactBar stats={ui} hold={ui.hold} next={ui.next} />}
-      <div className="game-shell">
-        <div className="board-wrap">
-          <BoardCanvas canvasRef={canvasRef} />
-          <Overlay
-            state={ui.state}
-            score={ui.score}
-            best={best}
-            isNewBest={isNewBest}
-            onTapStart={() => {
-              if (engine.state === 'ready' || engine.state === 'over') engine.start()
-            }}
-          />
+            </>
+          )}
         </div>
-        {!isTouch && (
-          <StatsPanel stats={ui} hold={ui.hold} next={ui.next} best={best} isNewBest={isNewBest} />
-        )}
+        {isTouch && <h1 className="mobile-title">俄罗斯方块</h1>}
+        <div className="toolbar-group toolbar-audio">
+          <button
+            className="tool-btn"
+            onClick={toggleBgm}
+            aria-label={bgmOn ? '关闭背景音乐' : '开启背景音乐'}
+            aria-pressed={bgmOn}
+            title={bgmOn ? '关闭 BGM（B）' : '开启 BGM（B）'}
+          >
+            {bgmOn ? '🎵' : '🎶'}
+          </button>
+          <button
+            className="tool-btn"
+            onClick={toggleMute}
+            aria-label={muted ? '开启音效' : '关闭音效'}
+            aria-pressed={muted}
+            title={muted ? '开启音效（M）' : '静音（M）'}
+          >
+            {muted ? '🔇' : '🔊'}
+          </button>
+        </div>
       </div>
-      <a className="back" href="../../index.html">
-        ← 返回方块世界
-      </a>
+      {!isTouch && (
+        <>
+          <h1 className="title">俄罗斯方块</h1>
+          <p className="sub">TETRIS · V3</p>
+        </>
+      )}
+      {isTouch && <CompactBar stats={ui} hold={ui.hold} next={ui.next} />}
+      <div className="console-body">
+        <div className="console-brand">
+          <span className="console-screw" aria-hidden="true" />
+          <span className="console-print">BRICK WORLD</span>
+          <span className="console-screw" aria-hidden="true" />
+        </div>
+        <div className="game-shell">
+          <div className="board-wrap">
+            <BoardCanvas canvasRef={canvasRef} />
+            <Overlay
+              state={ui.state}
+              score={ui.score}
+              best={best}
+              isNewBest={isNewBest}
+              onTapStart={() => {
+                if (engine.state === 'ready' || engine.state === 'over') engine.start()
+              }}
+            />
+          </div>
+          {!isTouch && (
+            <StatsPanel stats={ui} hold={ui.hold} next={ui.next} best={best} isNewBest={isNewBest} />
+          )}
+        </div>
+        <div className="console-foot">TETRIS</div>
+      </div>
+      {/* 触屏端隐藏返回链接：固定按键区占据底部，浏览器返回手势可达首页 */}
+      {!isTouch && (
+        <a className="back" href="../../index.html">
+          ← 返回方块世界
+        </a>
+      )}
       {isTouch && <TouchControls engine={engine} />}
     </div>
   )

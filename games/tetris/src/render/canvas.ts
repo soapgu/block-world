@@ -7,8 +7,12 @@ import type { Engine } from '../game/engine'
 export const CELL_SIZE = 24
 
 const COLORS = {
+  /** 液晶底：中心稍亮的 LCD 绿（背光不均感） */
   background: '#041a04',
+  backgroundCenter: '#06280a',
   grid: '#0a3a0a',
+  /** 熄灭段：每个格子都隐约可见的液晶残影 */
+  offCell: 'rgba(57, 255, 110, 0.045)',
   locked: '#2f9e44',
   active: '#39ff6e',
   activeBorder: '#0a3a0a',
@@ -32,21 +36,33 @@ function drawCell(
 ): void {
   const px = x * CELL_SIZE
   const py = y * CELL_SIZE
+  // 液晶段：格子四周留出明显间隙，露出底色
   ctx.fillStyle = fill
-  ctx.fillRect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2)
-  // 内侧一圈深色描边，做出点阵液晶的格子感
+  ctx.fillRect(px + 2, py + 2, CELL_SIZE - 4, CELL_SIZE - 4)
   ctx.strokeStyle = COLORS.activeBorder
   ctx.lineWidth = 2
-  ctx.strokeRect(px + 3, py + 3, CELL_SIZE - 6, CELL_SIZE - 6)
+  ctx.strokeRect(px + 4, py + 4, CELL_SIZE - 8, CELL_SIZE - 8)
 }
 
-/** 每帧全量重绘：背景 → 网格 → 已锁定块 → 当前方块 */
+/** 每帧全量重绘：底色渐变 → 熄灭段残影 → 网格 → 已锁定块 → ghost → 当前方块 */
 export function drawGame(ctx: CanvasRenderingContext2D, engine: Engine): void {
   const w = boardPixelWidth()
   const h = boardPixelHeight()
 
-  ctx.fillStyle = COLORS.background
+  // LCD 底色：径向渐变，中心稍亮（背光不均）
+  const bg = ctx.createRadialGradient(w / 2, h / 3, 0, w / 2, h / 3, h * 0.8)
+  bg.addColorStop(0, COLORS.backgroundCenter)
+  bg.addColorStop(1, COLORS.background)
+  ctx.fillStyle = bg
   ctx.fillRect(0, 0, w, h)
+
+  // 熄灭段残影：每个格子一个极淡方格（点阵液晶的物理特征）
+  ctx.fillStyle = COLORS.offCell
+  for (let y = 0; y < BOARD_HEIGHT; y++) {
+    for (let x = 0; x < BOARD_WIDTH; x++) {
+      ctx.fillRect(x * CELL_SIZE + 2, y * CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4)
+    }
+  }
 
   ctx.strokeStyle = COLORS.grid
   ctx.lineWidth = 1
