@@ -5,18 +5,22 @@ import type { Engine } from '../game/engine'
 const REPEAT_MS = 60
 /** 长按首次重复前的延迟（ms） */
 const REPEAT_DELAY_MS = 200
+/** 两次向下按键在此时间内连续按下，触发硬降 */
+const DOWN_DOUBLE_TAP_MS = 300
 
 type RepeatAction = () => void
 
 /**
  * 底部虚拟按键（经典掌机混合布局）：
- * 左侧倒 T 形方向区，右侧大旋转键 + 小硬降键；Hold 与暂停收在顶部工具栏。
+ * 左侧倒 T 形方向区，右侧大旋转键；双击向下硬降，Hold 与暂停收在顶部工具栏。
  * pointerdown 触发命令，移动键长按自动重复；pointerup/cancel 一律停止。
  * 软降按住期间持续生效（与键盘语义一致）；只调用引擎命令层，零引擎改动。
  */
 export function TouchControls({ engine }: { engine: Engine }) {
   const repeatTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const repeatDelay = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastDownPress = useRef(0)
+  const downPointerActive = useRef(false)
 
   const stopRepeat = () => {
     if (repeatDelay.current) clearTimeout(repeatDelay.current)
@@ -30,15 +34,24 @@ export function TouchControls({ engine }: { engine: Engine }) {
     engine.setSoftDrop(false)
   }
 
+  const cancelGesture = () => {
+    const cancelledDuringDown = downPointerActive.current
+    downPointerActive.current = false
+    stopAll()
+    if (cancelledDuringDown) lastDownPress.current = 0
+  }
+
   useEffect(
     () => () => {
       stopRepeat()
       engine.setSoftDrop(false)
+      lastDownPress.current = 0
+      downPointerActive.current = false
     },
     [engine],
   )
 
-  /** 单发命令（旋转/硬降） */
+  /** 单发命令（旋转） */
   const fire = (action: RepeatAction) => (e: React.PointerEvent) => {
     e.preventDefault()
     action()
@@ -54,19 +67,40 @@ export function TouchControls({ engine }: { engine: Engine }) {
     }, REPEAT_DELAY_MS)
   }
 
-  /** 软降：按下开、抬起关 */
+  /** 按住软降；300ms 内连续按下两次则改为硬降 */
   const softDown = (e: React.PointerEvent) => {
     e.preventDefault()
+    if (engine.state !== 'playing') {
+      lastDownPress.current = 0
+      downPointerActive.current = false
+      engine.setSoftDrop(false)
+      return
+    }
+
+    downPointerActive.current = true
+    const now = performance.now()
+    if (lastDownPress.current > 0 && now - lastDownPress.current <= DOWN_DOUBLE_TAP_MS) {
+      lastDownPress.current = 0
+      downPointerActive.current = false
+      engine.setSoftDrop(false)
+      engine.hardDrop()
+      return
+    }
+
+    lastDownPress.current = now
     engine.setSoftDrop(true)
   }
-  const softUp = () => engine.setSoftDrop(false)
+  const softUp = () => {
+    downPointerActive.current = false
+    engine.setSoftDrop(false)
+  }
 
   return (
     <div
       className="touch-controls"
       onPointerUp={stopAll}
-      onPointerCancel={stopAll}
-      onPointerLeave={stopAll}
+      onPointerCancel={cancelGesture}
+      onPointerLeave={cancelGesture}
     >
       <div className="tc-deck">
         <div className="tc-direction" aria-label="方向控制">
@@ -82,20 +116,16 @@ export function TouchControls({ engine }: { engine: Engine }) {
             className="tc-btn tc-down"
             onPointerDown={softDown}
             onPointerUp={softUp}
-            onPointerCancel={softUp}
-            aria-label="软降"
+            aria-label="软降，双击硬降"
           >
-            ↓
+            <span>↓</span>
+            <span className="tc-down-hint">×2 硬降</span>
           </button>
         </div>
         <div className="tc-actions">
           <button className="tc-btn tc-rotate" onPointerDown={fire(() => engine.rotate(1))} aria-label="旋转">
             <span className="tc-action-icon">↻</span>
             <span className="tc-action-label">旋转</span>
-          </button>
-          <button className="tc-btn tc-hard-drop" onPointerDown={fire(() => engine.hardDrop())} aria-label="硬降">
-            <span>⤓</span>
-            <span className="tc-action-label">硬降</span>
           </button>
         </div>
       </div>

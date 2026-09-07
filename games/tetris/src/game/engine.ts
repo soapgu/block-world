@@ -41,6 +41,7 @@ export type GameEvent =
   | { type: 'move' }
   | { type: 'rotate' }
   | { type: 'hold' }
+  | { type: 'softDrop' }
   | { type: 'hardDrop' }
   | { type: 'lock' }
   | { type: 'clear'; lines: number } // 消 1~3 行
@@ -192,7 +193,10 @@ export class Engine {
     ) {
       this.dropTimer -= interval
       if (!this.stepDown()) break // 触底，交给锁定延迟
-      if (this.softDropping) this.score_ += TUNING.softDropBonus
+      if (this.softDropping) {
+        this.score_ += TUNING.softDropBonus
+        this.emit({ type: 'softDrop' })
+      }
     }
   }
 

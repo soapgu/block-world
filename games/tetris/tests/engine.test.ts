@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { Engine } from '../src/game/engine'
 import type { GameEvent } from '../src/game/engine'
 import type { Randomizer } from '../src/game/randomizer'
+import { TUNING } from '../src/game/tuning'
 import type { Cell, PieceType } from '../src/game/types'
 
 /** 固定序列发牌器：按给定顺序循环发牌，绕过 7-bag 以便断言 */
@@ -161,6 +162,29 @@ describe('游戏事件', () => {
     engine.start()
     engine.hardDrop()
     expect(events).toEqual([{ type: 'hardDrop' }, { type: 'lock' }])
+  })
+
+  it('软降每成功下降一格派发一次 softDrop，自然重力不派发', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(['T']) })
+    const events = collect(engine)
+    engine.start()
+
+    engine.update(TUNING.baseDropInterval)
+    expect(events).not.toContainEqual({ type: 'softDrop' })
+
+    engine.setSoftDrop(true)
+    engine.update(TUNING.softDropInterval)
+    expect(events.filter((event) => event.type === 'softDrop')).toHaveLength(1)
+  })
+
+  it('暂停时不推进软降或派发 softDrop', () => {
+    const engine = new Engine({ randomizer: fixedRandomizer(['T']) })
+    const events = collect(engine)
+    engine.start()
+    engine.setSoftDrop(true)
+    engine.togglePause()
+    engine.update(TUNING.softDropInterval)
+    expect(events).not.toContainEqual({ type: 'softDrop' })
   })
 
   it('消行派发带行数的 clear 事件', () => {

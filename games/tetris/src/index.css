@@ -329,7 +329,7 @@ canvas.board {
 
 /* 触屏页面：内容上移给底部按键区留空间 */
 .page.touch {
-  --touch-controls-height: calc(168px + env(safe-area-inset-bottom, 0px));
+  --touch-controls-height: calc(142px + env(safe-area-inset-bottom, 0px));
   width: 100%;
   height: var(--game-viewport-height, 100svh);
   min-height: 0;
@@ -497,7 +497,19 @@ canvas.board {
 .tc-down {
   width: 48px;
   height: 48px;
-  font-size: 21px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: 20px;
+}
+
+.tc-down-hint {
+  font-size: 8px;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .tc-rotate {
@@ -519,17 +531,6 @@ canvas.board {
 .tc-action-label {
   font-size: 12px;
   letter-spacing: 1px;
-}
-
-.tc-hard-drop {
-  width: 68px;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  border-color: #4da6ff;
-  font-size: 17px;
 }
 
 .tc-btn:active {
@@ -574,10 +575,6 @@ canvas.board {
     height: 76px;
   }
 
-  .tc-hard-drop {
-    width: 60px;
-    height: 48px;
-  }
 }
 
 /* ===== 复古掌机机身（v3.4 LCD 皮肤）===== */
