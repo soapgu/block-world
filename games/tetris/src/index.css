@@ -374,11 +374,11 @@ canvas.board {
 .mobile-title {
   min-width: 0;
   margin: 0;
-  padding: 0 4px;
-  overflow: hidden;
+  /* 中文像素字形会略高于 em 框，留出上下空间避免顶部笔画被裁掉。 */
+  padding: 2px 4px 1px;
   color: #39ff6e;
   font-size: clamp(18px, 5.2vw, 22px);
-  line-height: 1;
+  line-height: 1.2;
   font-weight: bold;
   letter-spacing: clamp(2px, 0.8vw, 4px);
   text-shadow: 2px 2px 0 #0a3a0a;
