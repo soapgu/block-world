@@ -35,10 +35,11 @@ jobs:
           npm test
           npm run build
 
-      - name: 构建贪吃蛇
+      - name: 测试并构建贪吃蛇
         working-directory: games/snake
         run: |
           npm ci
+          npm test
           npm run build
 
       - name: 组装站点（全量静态文件 + 游戏构建产物）
