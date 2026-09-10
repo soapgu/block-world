@@ -24,18 +24,26 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: games/tetris/package-lock.json
+          cache-dependency-path: |
+            games/tetris/package-lock.json
+            games/snake/package-lock.json
 
-      - name: 测试并构建游戏
+      - name: 测试并构建俄罗斯方块
         working-directory: games/tetris
         run: |
           npm ci
           npm test
           npm run build
 
+      - name: 构建贪吃蛇
+        working-directory: games/snake
+        run: |
+          npm ci
+          npm run build
+
       - name: 组装站点（全量静态文件 + 游戏构建产物）
         run: |
-          mkdir -p _site/games/tetris
+          mkdir -p _site/games/tetris _site/games/snake
           rsync -a \
             --exclude .git \
             --exclude .github \
@@ -46,6 +54,7 @@ jobs:
             --exclude _site \
             ./ _site/
           cp -a games/tetris/dist/. _site/games/tetris/
+          cp -a games/snake/dist/. _site/games/snake/
           touch _site/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
