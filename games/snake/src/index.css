@@ -4,6 +4,8 @@ html, body {
   background: #041a04;
   font-family: "Courier New", monospace;
   color: #9fff9f;
+  /* 禁双击缩放（移动端）；不影响桌面 */
+  touch-action: manipulation;
 }
 
 .page {
@@ -12,52 +14,143 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 2px;
   padding: 24px;
   text-align: center;
   box-sizing: border-box;
 }
 
 .title {
-  margin: 24px 0 0 0;
-  font-size: 36px;
+  margin: 0;
+  font-size: 26px;
   font-weight: bold;
   color: #39ff6e;
   text-shadow: 3px 3px 0 #0a3a0a;
   letter-spacing: 6px;
 }
 
-.status {
-  margin: 0;
-  font-size: 15px;
+.sub {
+  margin: 0 0 14px 0;
+  font-size: 12px;
   color: #4da6ff;
   letter-spacing: 4px;
 }
 
-.hint {
+.game-shell {
+  display: flex;
+  gap: 20px;
+  /* 面板拉伸到与棋盘等高，两边视觉对齐 */
+  align-items: stretch;
+}
+
+.board-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.board-frame {
+  /* Overlay 挂在本层内：相对定位；填满拉伸容器且画布垂直居中 */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 8px;
+  background: #062006;
+  border: 2px solid #2f9e44;
+  box-shadow: 4px 4px 0 #0a3a0a;
+  box-sizing: border-box;
+}
+
+canvas.board {
+  display: block;
+  width: 480px; /* 桌面默认；窄屏由下方媒体查询覆盖 */
+  max-width: 100%;
+  height: auto;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(4, 26, 4, 0.88);
+  z-index: 2;
+  cursor: pointer;
+}
+
+.overlay-title {
   margin: 0;
-  font-size: 13px;
-  color: #2f9e44;
+  font-size: 28px;
+  font-weight: bold;
+  color: #39ff6e;
+  text-shadow: 3px 3px 0 #0a3a0a;
+  letter-spacing: 4px;
+}
+
+.overlay-detail {
+  margin: 0;
+  font-size: 14px;
+  color: #9fff9f;
   letter-spacing: 2px;
 }
 
-.food-blink {
-  animation: food-blink 1s steps(2) infinite;
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  /* 固定宽度：分数位数变化不引起面板/布局横向跳动 */
+  width: 168px;
+  padding: 14px 18px;
+  background: #062006;
+  border: 2px solid #2f9e44;
+  box-shadow: 4px 4px 0 #0a3a0a;
+  text-align: left;
+  box-sizing: border-box;
 }
 
-@keyframes food-blink {
-  50% {
-    opacity: 0.2;
-  }
+.panel-label {
+  margin: 10px 0 0 0;
+  font-size: 12px;
+  color: #4da6ff;
+  letter-spacing: 2px;
+}
+
+.panel-label:first-child {
+  margin-top: 0;
+}
+
+.panel-value {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  /* 锁定数值行高：内容变化（位数）不引起高度跳动 */
+  min-height: 29px;
+  color: #39ff6e;
+}
+
+.help {
+  /* 面板拉伸等高后，帮助文案沉底，让面板内容上下铺满 */
+  margin-top: auto;
+  padding-top: 16px;
+  font-size: 11px;
+  line-height: 1.9;
+  color: #2f9e44;
+  letter-spacing: 1px;
 }
 
 .back {
-  margin-top: 40px;
-  padding: 10px 24px;
+  margin-top: 24px;
+  padding: 8px 20px;
   background: #062006;
   border: 2px solid #2f9e44;
   color: #9fff9f;
-  font-size: 14px;
+  font-size: 13px;
   letter-spacing: 2px;
   text-decoration: none;
   box-shadow: 4px 4px 0 #0a3a0a;
@@ -69,4 +162,28 @@ html, body {
   border-color: #39ff6e;
   transform: translate(-1px, -1px);
   box-shadow: 6px 6px 0 #0a3a0a;
+}
+
+/* ===== 窄屏兜底（触控可玩性在 v3，这里只保证不破版）===== */
+@media (max-width: 700px) {
+  .game-shell {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  canvas.board {
+    /* 画布等比缩放进视口（board-frame 的 padding/border 另占 ~20px） */
+    width: min(90vw, 480px);
+  }
+
+  .panel {
+    width: min(90vw, 480px);
+  }
+
+  .help {
+    margin-top: 0;
+    padding-top: 8px;
+  }
 }

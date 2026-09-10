@@ -1,71 +1,72 @@
-const CELL = 16
-const GAP = 2
+import { useEffect, useRef, useState } from 'react'
+import { BoardCanvas } from './components/BoardCanvas'
+import { Overlay } from './components/Overlay'
+import { StatsPanel } from './components/StatsPanel'
+import { Engine } from './game/engine'
+import type { UiSnapshot } from './game/engine'
+import { useGameLoop } from './hooks/useGameLoop'
+import { useKeyboard } from './hooks/useKeyboard'
+import { boardPixelHeight, boardPixelWidth, drawGame } from './render/canvas'
 
-// 蛇形像素图案：一条向右爬行的 S 形蛇（头亮、身暗、食物闪烁点）
-// (列, 行) 网格：12×7
-const SNAKE_HEAD: Array<[number, number]> = [[10, 2]]
-const SNAKE_BODY: Array<[number, number]> = [
-  [3, 2], [4, 2], [5, 2], [6, 2], [7, 2], [8, 2], [9, 2],
-  [3, 3], [3, 4],
-  [3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5],
-]
-const FOOD: Array<[number, number]> = [[8, 4]]
-
-const COLS = 12
-const ROWS = 7
-
-function SnakeArt() {
+function sameUi(a: UiSnapshot, b: UiSnapshot): boolean {
   return (
-    <svg
-      width={COLS * CELL}
-      height={ROWS * CELL + GAP}
-      viewBox={`0 0 ${COLS * CELL} ${ROWS * CELL + GAP}`}
-      aria-label="像素蛇"
-    >
-      {SNAKE_BODY.map(([c, r]) => (
-        <rect
-          key={`b-${c}-${r}`}
-          x={c * CELL + GAP}
-          y={r * CELL + GAP}
-          width={CELL - GAP}
-          height={CELL - GAP}
-          fill="#2f9e44"
-        />
-      ))}
-      {SNAKE_HEAD.map(([c, r]) => (
-        <rect
-          key="head"
-          x={c * CELL + GAP}
-          y={r * CELL + GAP}
-          width={CELL - GAP}
-          height={CELL - GAP}
-          fill="#39ff6e"
-          stroke="#0a3a0a"
-          strokeWidth={GAP}
-        />
-      ))}
-      {FOOD.map(([c, r]) => (
-        <rect
-          key="food"
-          x={c * CELL + GAP}
-          y={r * CELL + GAP}
-          width={CELL - GAP}
-          height={CELL - GAP}
-          fill="#9fff9f"
-          className="food-blink"
-        />
-      ))}
-    </svg>
+    a.score === b.score &&
+    a.length === b.length &&
+    a.state === b.state
   )
 }
 
 export default function App() {
+  const engineRef = useRef<Engine | null>(null)
+  if (!engineRef.current) engineRef.current = new Engine()
+  const engine = engineRef.current
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [ui, setUi] = useState<UiSnapshot>(() => engine.getUiSnapshot())
+
+  // 按设备像素比设置画布物理尺寸，保证高清屏下清晰
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = boardPixelWidth() * dpr
+    canvas.height = boardPixelHeight() * dpr
+  }, [])
+
+  useKeyboard(engine)
+
+  useGameLoop((dt) => {
+    engine.update(dt)
+
+    const ctx = canvasRef.current?.getContext('2d')
+    if (ctx) {
+      const dpr = window.devicePixelRatio || 1
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      drawGame(ctx, engine, performance.now())
+    }
+
+    // 引擎数据在 ref 里，这里只在变化时同步进 React（避免每帧重渲染外壳）
+    const snapshot = engine.getUiSnapshot()
+    setUi((prev) => (sameUi(prev, snapshot) ? prev : snapshot))
+  })
+
   return (
     <div className="page">
-      <SnakeArt />
       <h1 className="title">贪吃蛇</h1>
-      <p className="status">V1 · 建设中</p>
-      <p className="hint">工程已就绪，游戏玩法开发中</p>
+      <p className="sub">SNAKE · V1</p>
+      <div className="game-shell">
+        <div className="board-wrap">
+          <BoardCanvas canvasRef={canvasRef} />
+          <Overlay
+            state={ui.state}
+            score={ui.score}
+            onTapStart={() => {
+              if (engine.state === 'ready' || engine.state === 'over') engine.start()
+            }}
+          />
+        </div>
+        <StatsPanel stats={ui} />
+      </div>
       <a className="back" href="../../index.html">
         ← 返回方块世界
       </a>
