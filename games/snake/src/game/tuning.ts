@@ -19,6 +19,8 @@ export const TUNING = {
   bonusLifetimeMs: 5000,
   /** 每吃多少个普通食物出现一次奖励食物 */
   bonusEvery: 5,
+  /** 死亡逐节熄灭动画时长（ms） */
+  dyingDurationMs: 500,
   /** 方向队列容量：缓存最近 2 次按键，防快速转向丢输入 */
   dirQueueLength: 2,
 } as const

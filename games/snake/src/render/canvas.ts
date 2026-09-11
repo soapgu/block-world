@@ -103,12 +103,18 @@ export function drawGame(
     }
   }
 
-  // 蛇身（跳过头部，头部单独亮色绘制）
+  // 蛇身（跳过头部，头部单独亮色绘制）。
+  // dying 状态按进度从头到尾熄灭：熄灭线 litFrom 从 0 推进到 len，
+  // 索引小于它的节（含头）不再绘制，露出底下更暗的熄灭段残影，
+  // 形成"从撞击点开始逐节灭灯"的效果。
+  const dying = engine.dyingProgress()
+  const litFrom = dying > 0 ? dying * engine.snake.length : -1
   for (let i = 1; i < engine.snake.length; i++) {
+    if (i < litFrom) continue
     const seg = engine.snake[i]
     drawCell(ctx, seg.x, seg.y, COLORS.body)
   }
-  // 蛇头：亮绿 + 描边区分
+  // 蛇头：亮绿 + 描边区分（熄灭线扫过头部即灭）
   const head = engine.snake[0]
-  if (head) drawCell(ctx, head.x, head.y, COLORS.head)
+  if (head && litFrom <= 0) drawCell(ctx, head.x, head.y, COLORS.head)
 }

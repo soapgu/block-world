@@ -40,6 +40,8 @@ export class Engine {
   /** 方向队列：缓存最近按键，每步只消费 1 个 */
   private dirQueue: Dir[] = []
   private stepTimer = 0
+  /** 死亡熄灭动画已进行的时间（ms） */
+  private dieTimer = 0
   /** 事件监听器列表 */
   private listeners: Array<(event: GameEvent) => void> = []
   private readonly rng: Rng
@@ -88,6 +90,7 @@ export class Engine {
     this.score = 0
     this.eaten = 0
     this.stepTimer = 0
+    this.dieTimer = 0
     this.food = spawnFood(this.snake, this.rng)
     this.bonus = null
     this.state = 'playing'
@@ -96,6 +99,12 @@ export class Engine {
   togglePause(): void {
     if (this.state === 'playing') this.state = 'paused'
     else if (this.state === 'paused') this.state = 'playing'
+  }
+
+  /** 死亡熄灭动画进度 0~1（非 dying 状态为 0） */
+  dyingProgress(): number {
+    if (this.state !== 'dying') return 0
+    return Math.min(1, this.dieTimer / TUNING.dyingDurationMs)
   }
 
   /**
@@ -112,8 +121,13 @@ export class Engine {
     this.dirQueue.push(dir)
   }
 
-  /** 每帧推进（dt 毫秒）。仅在 playing 状态生效。 */
+  /** 每帧推进（dt 毫秒）。playing 推进游戏，dying 推进熄灭动画。 */
   update(dt: number): void {
+    if (this.state === 'dying') {
+      this.dieTimer += dt
+      if (this.dieTimer >= TUNING.dyingDurationMs) this.state = 'over'
+      return
+    }
     if (this.state !== 'playing') return
     this.tickBonus(dt)
     this.stepTimer += dt
@@ -180,7 +194,9 @@ export class Engine {
   }
 
   private die(): void {
-    this.state = 'over'
+    // 事件在死亡瞬间派发（音效立即响），结算遮罩等熄灭动画结束
+    this.state = 'dying'
+    this.dieTimer = 0
     this.emit({ type: 'gameOver' })
   }
 

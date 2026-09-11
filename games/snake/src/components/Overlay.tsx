@@ -14,7 +14,8 @@ export function Overlay({
   /** 点按遮罩：移动端等效回车（开始/重开），v3 触屏接线 */
   onTapStart?: () => void
 }) {
-  if (state === 'playing') return null
+  // dying（熄灭动画中）不打扰：结算等动画结束才出现
+  if (state === 'playing' || state === 'dying') return null
 
   let title: string
   let detail: JSX.Element

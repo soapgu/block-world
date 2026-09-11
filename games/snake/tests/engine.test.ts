@@ -128,6 +128,8 @@ describe('死亡判定', () => {
     engine.start()
     engine.turn('up')
     engine.update(200 * 11) // 从 y=10 向上，第 11 步出界
+    expect(engine.state).toBe('dying')
+    engine.update(500) // 熄灭动画结束
     expect(engine.state).toBe('over')
     expect(events).toEqual([{ type: 'gameOver' }])
   })
@@ -146,6 +148,7 @@ describe('死亡判定', () => {
     engine.snake = snake
     engine.dir = 'up'
     engine.update(200)
+    engine.update(500) // 熄灭动画结束
     expect(engine.state).toBe('over')
   })
 
@@ -181,6 +184,7 @@ describe('死亡判定', () => {
     engine.snake = snake
     engine.food = { x: 11, y: 10 }
     engine.update(200)
+    engine.update(500) // 熄灭动画结束
     expect(engine.state).toBe('over')
     expect(engine.food).toBeNull()
   })
@@ -270,6 +274,71 @@ describe('暂停', () => {
     engine.togglePause()
     engine.update(100)
     expect(engine.bonus!.timer).toBe(timerBefore - 100)
+  })
+})
+
+describe('死亡熄灭动画', () => {
+  function dieByWall(engine: Engine): void {
+    engine.start()
+    engine.turn('up')
+    engine.update(200 * 11) // 从 y=10 向上，第 11 步出界
+  }
+
+  it('死亡先进入 dying（非直接 over），gameOver 事件只派发一次', () => {
+    const engine = createEngine()
+    const events: GameEvent[] = []
+    engine.subscribe((e) => events.push(e))
+    dieByWall(engine)
+    expect(engine.state).toBe('dying')
+    expect(events).toEqual([{ type: 'gameOver' }])
+  })
+
+  it('dying 期间 update 只推进动画：蛇不动、奖励不减', () => {
+    const engine = createEngine()
+    dieByWall(engine)
+    const head = { ...engine.snake[0] }
+    engine.update(200)
+    expect(engine.state).toBe('dying')
+    expect(engine.snake[0]).toEqual(head)
+  })
+
+  it('dying 期间 turn 无效', () => {
+    const engine = createEngine()
+    dieByWall(engine)
+    const head = { ...engine.snake[0] }
+    engine.turn('down')
+    engine.update(200)
+    expect(engine.snake[0]).toEqual(head)
+  })
+
+  it('动画进度 0~1 递增，到 500ms 转为 over', () => {
+    const engine = createEngine()
+    dieByWall(engine)
+    expect(engine.dyingProgress()).toBe(0)
+    engine.update(250)
+    expect(engine.dyingProgress()).toBe(0.5)
+    expect(engine.state).toBe('dying')
+    engine.update(249)
+    expect(engine.state).toBe('dying') // 499ms，尚差 1ms
+    engine.update(1)
+    expect(engine.state).toBe('over')
+    expect(engine.dyingProgress()).toBe(0) // 非 dying 状态恒 0
+  })
+
+  it('dying 结束后回车可重开', () => {
+    const engine = createEngine()
+    dieByWall(engine)
+    engine.update(500)
+    expect(engine.state).toBe('over')
+    engine.start()
+    expect(engine.state).toBe('playing')
+    expect(engine.score).toBe(0)
+  })
+
+  it('非 dying 状态 dyingProgress 恒为 0', () => {
+    const engine = createEngine()
+    engine.start()
+    expect(engine.dyingProgress()).toBe(0)
   })
 })
 
