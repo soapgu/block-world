@@ -8,6 +8,12 @@ html, body {
   touch-action: manipulation;
 }
 
+html.snake-touch,
+html.snake-touch body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 .page {
   min-height: 100vh;
   display: flex;
@@ -15,9 +21,45 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 24px;
+  padding: 12px 24px 16px;
   text-align: center;
   box-sizing: border-box;
+  position: relative;
+}
+
+.toolbar {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: flex;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 8px;
+}
+
+.tool-btn {
+  width: 40px;
+  height: 40px;
+  background: #062006;
+  border: 2px solid #2f9e44;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 #0a3a0a;
+  transition: all 0.15s;
+}
+
+.tool-btn:hover {
+  background: #0a3a0a;
+  border-color: #39ff6e;
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 #0a3a0a;
+}
+
+.tool-btn[aria-pressed='true'] {
+  border-color: #39ff6e;
+  color: #39ff6e;
 }
 
 .title {
@@ -79,7 +121,7 @@ canvas.board {
   justify-content: center;
   gap: 10px;
   background: rgba(4, 26, 4, 0.88);
-  z-index: 2;
+  z-index: 2; /* 置于扫描线覆盖层之上 */
   cursor: pointer;
 }
 
@@ -183,8 +225,8 @@ canvas.board {
   box-shadow: 6px 6px 0 #0a3a0a;
 }
 
-/* ===== 窄屏兜底（触控可玩性在 v3，这里只保证不破版）===== */
-@media (max-width: 700px) {
+/* ===== 桌面窄屏兜底 ===== */
+@media (max-width: 700px) and (pointer: fine) {
   .game-shell {
     flex-direction: column;
     align-items: center;
@@ -193,7 +235,6 @@ canvas.board {
   }
 
   canvas.board {
-    /* 画布等比缩放进视口（board-frame 的 padding/border 另占 ~20px） */
     width: min(90vw, 480px);
   }
 
@@ -205,4 +246,279 @@ canvas.board {
     margin-top: 0;
     padding-top: 8px;
   }
+}
+
+/* ===== 移动端（触屏 · 竖屏优先）===== */
+
+/* 精简信息条：仅触屏布局渲染 */
+.compact-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 340px;
+  height: 44px;
+  padding: 4px 12px;
+  margin-bottom: 6px;
+  background: #062006;
+  border: 2px solid #2f9e44;
+  box-shadow: 3px 3px 0 #0a3a0a;
+  box-sizing: border-box;
+}
+
+.cb-group {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.cb-label {
+  font-size: 10px;
+  color: #4da6ff;
+  letter-spacing: 1px;
+}
+
+.cb-stat {
+  font-size: 18px;
+  color: #39ff6e;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 触屏页面：内容上移给底部按键区留空间 */
+.page.touch {
+  --touch-controls-height: calc(150px + env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  height: var(--game-viewport-height, 100svh);
+  min-height: 0;
+  max-height: var(--game-viewport-height, 100svh);
+  padding: 8px 14px var(--touch-controls-height);
+  justify-content: flex-start;
+  gap: 0;
+  overflow: hidden;
+  /* 游戏操作中的长按不触发文字选择或系统复制菜单 */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.page.touch .toolbar {
+  position: static;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  max-width: 340px;
+  min-height: 36px;
+  margin-bottom: 6px;
+}
+
+.page.touch .tool-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.page.touch .toolbar-group {
+  gap: 4px;
+}
+
+.mobile-title {
+  min-width: 0;
+  margin: 0;
+  /* 中文像素字形会略高于 em 框，留出上下空间避免顶部笔画被裁掉。 */
+  padding: 2px 4px 1px;
+  color: #39ff6e;
+  font-size: clamp(18px, 5.2vw, 22px);
+  line-height: 1.2;
+  font-weight: bold;
+  letter-spacing: clamp(2px, 0.8vw, 4px);
+  text-shadow: 2px 2px 0 #0a3a0a;
+  white-space: nowrap;
+}
+
+/* 中间机身占据固定视口扣除顶部和按键区后的剩余空间 */
+.page.touch .console-body {
+  width: min(calc(100vw - 32px), 336px);
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px 8px;
+  box-sizing: border-box;
+}
+
+.page.touch .game-shell {
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.page.touch .board-wrap {
+  height: 100%;
+  min-height: 0;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+.page.touch .board-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.page.touch canvas.board {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* 底部虚拟按键：十字方向键 */
+.touch-controls {
+  /* 锚定锁高后的游戏页，而不是跟随浏览器动态视口上下移动 */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: rgba(4, 26, 4, 0.92);
+  border-top: 2px solid #2f9e44;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  z-index: 10;
+}
+
+.tc-deck {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tc-direction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.tc-direction-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.tc-btn {
+  width: 56px;
+  height: 56px;
+  background: #062006;
+  border: 2px solid #2f9e44;
+  color: #9fff9f;
+  font-size: 24px;
+  line-height: 1;
+  box-shadow: 3px 3px 0 #0a3a0a;
+  touch-action: none; /* 按键不触发浏览器手势 */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tc-direction-row .tc-btn {
+  width: 62px;
+  height: 62px;
+}
+
+.tc-btn:active {
+  background: #0a3a0a;
+  border-color: #39ff6e;
+  color: #39ff6e;
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #0a3a0a;
+}
+
+/* ===== 复古掌机机身（诺基亚 LCD 皮肤）===== */
+
+.console-body {
+  padding: 14px 18px 12px;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #1c2a1e 0%, #16211a 55%, #101a13 100%);
+  /* 塑料厚度：外投影 + 内高光 + 边缘暗线 */
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(159, 255, 159, 0.18),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.45),
+    0 0 0 1px #0c1410;
+}
+
+.console-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+/* 丝印小字 */
+.console-print {
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: #4a6b4e;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* 装饰螺丝：十字槽圆点 */
+.console-screw {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #3d5242, #1a2418 70%);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(159, 255, 159, 0.08);
+  position: relative;
+}
+
+.console-screw::after {
+  content: '';
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: 50%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.65);
+  transform: translateY(-0.5px) rotate(38deg);
+}
+
+.console-foot {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 8px;
+  color: #4a6b4e;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* 液晶屏覆盖层：扫描线 + 轻噪点（纯视觉，不拦截交互） */
+.board-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.09) 0px,
+      rgba(0, 0, 0, 0.09) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(
+      ellipse at 50% 40%,
+      transparent 60%,
+      rgba(0, 0, 0, 0.18) 100%
+    );
+  z-index: 1; /* 只压 canvas，遮罩层（z-index:2）在它之上 */
+  border-radius: 2px;
 }
