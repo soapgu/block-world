@@ -99,6 +99,25 @@ canvas.board {
   letter-spacing: 2px;
 }
 
+.panel-value.newbest {
+  color: #9fff9f;
+  animation: newbest-blink 0.8s steps(2) infinite;
+}
+
+.overlay-newbest {
+  margin: 0;
+  font-size: 15px;
+  color: #9fff9f;
+  letter-spacing: 3px;
+  animation: newbest-blink 0.8s steps(2) infinite;
+}
+
+@keyframes newbest-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
 .panel {
   display: flex;
   flex-direction: column;

@@ -4,6 +4,8 @@ import { Overlay } from './components/Overlay'
 import { StatsPanel } from './components/StatsPanel'
 import { Engine } from './game/engine'
 import type { UiSnapshot } from './game/engine'
+import { useAutoPause } from './hooks/useAutoPause'
+import { useBestScore } from './hooks/useBestScore'
 import { useGameLoop } from './hooks/useGameLoop'
 import { useKeyboard } from './hooks/useKeyboard'
 import { boardPixelHeight, boardPixelWidth, drawGame } from './render/canvas'
@@ -23,6 +25,7 @@ export default function App() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [ui, setUi] = useState<UiSnapshot>(() => engine.getUiSnapshot())
+  const [best, isNewBest] = useBestScore(engine)
 
   // 按设备像素比设置画布物理尺寸，保证高清屏下清晰
   useEffect(() => {
@@ -34,6 +37,7 @@ export default function App() {
   }, [])
 
   useKeyboard(engine)
+  useAutoPause(engine)
 
   useGameLoop((dt) => {
     engine.update(dt)
@@ -60,12 +64,14 @@ export default function App() {
           <Overlay
             state={ui.state}
             score={ui.score}
+            best={best}
+            isNewBest={isNewBest}
             onTapStart={() => {
               if (engine.state === 'ready' || engine.state === 'over') engine.start()
             }}
           />
         </div>
-        <StatsPanel stats={ui} />
+        <StatsPanel stats={ui} best={best} isNewBest={isNewBest} />
       </div>
       <a className="back" href="../../index.html">
         ← 返回方块世界
