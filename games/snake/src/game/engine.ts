@@ -1,18 +1,22 @@
-import { spawnFood } from './food'
+import { spawnBonusFood, spawnFood } from './food'
 import type { Rng } from './food'
 import { insideGrid, isOppositeDir } from './grid'
 import { advance, blocksCell, createSnake, nextHead } from './snake'
 import type { SnakeBody } from './snake'
 import { TUNING } from './tuning'
-import type { Dir, Point, SnakeState, Stats } from './types'
+import type { BonusFood, Dir, Point, SnakeState, Stats } from './types'
 
 /** React 外壳需要的低频 UI 数据（每帧浅比较后同步） */
 export interface UiSnapshot extends Stats {
   state: SnakeState
 }
 
-/** 引擎在关键节点派发的游戏事件（后续音效/最高分从这里订阅，不参与游戏逻辑） */
-export type GameEvent = { type: 'eat' } | { type: 'gameOver' }
+/** 引擎在关键节点派发的游戏事件（音效/最高分从这里订阅，不参与游戏逻辑） */
+export type GameEvent =
+  | { type: 'eat' }
+  | { type: 'eatBonus' }
+  | { type: 'bonusExpire' }
+  | { type: 'gameOver' }
 
 export interface EngineOptions {
   /** 注入随机源（测试用固定序列） */
@@ -28,6 +32,8 @@ export class Engine {
   snake: SnakeBody = createSnake()
   dir: Dir = 'right'
   food: Point | null = null
+  /** 限时奖励食物（与普通食物并存） */
+  bonus: BonusFood | null = null
   score = 0
   eaten = 0
 
@@ -83,7 +89,13 @@ export class Engine {
     this.eaten = 0
     this.stepTimer = 0
     this.food = spawnFood(this.snake, this.rng)
+    this.bonus = null
     this.state = 'playing'
+  }
+
+  togglePause(): void {
+    if (this.state === 'playing') this.state = 'paused'
+    else if (this.state === 'paused') this.state = 'playing'
   }
 
   /**
@@ -103,10 +115,21 @@ export class Engine {
   /** 每帧推进（dt 毫秒）。仅在 playing 状态生效。 */
   update(dt: number): void {
     if (this.state !== 'playing') return
+    this.tickBonus(dt)
     this.stepTimer += dt
     while (this.stepTimer >= this.stepInterval() && this.state === 'playing') {
       this.stepTimer -= this.stepInterval()
       this.step()
+    }
+  }
+
+  /** 奖励食物倒计时，归零消失 */
+  private tickBonus(dt: number): void {
+    if (this.bonus === null) return
+    this.bonus.timer -= dt
+    if (this.bonus.timer <= 0) {
+      this.bonus = null
+      this.emit({ type: 'bonusExpire' })
     }
   }
 
@@ -131,6 +154,28 @@ export class Engine {
         return this.die()
       }
       this.emit({ type: 'eat' })
+      // 每吃满 bonusEvery 个普通食物刷一个限时奖励
+      if (this.eaten % TUNING.bonusEvery === 0 && this.bonus === null) {
+        this.spawnBonus()
+      }
+      return
+    }
+
+    // 奖励食物：只加分不变长（尾已在 advance 出列）
+    if (this.bonus !== null && head.x === this.bonus.point.x && head.y === this.bonus.point.y) {
+      this.score += TUNING.bonusScore
+      this.bonus = null
+      this.emit({ type: 'eatBonus' })
+    }
+  }
+
+  private spawnBonus(): void {
+    // food 此时已重生成；无空闲格时放弃本次奖励
+    const point = this.food !== null
+      ? spawnBonusFood(this.snake, this.food, this.rng)
+      : null
+    if (point !== null) {
+      this.bonus = { point, timer: TUNING.bonusLifetimeMs }
     }
   }
 

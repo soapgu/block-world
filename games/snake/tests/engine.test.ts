@@ -186,6 +186,93 @@ describe('死亡判定', () => {
   })
 })
 
+/** 喂食辅助：把普通食物放到蛇头正前方一步并推进一个间隔（必然吃到） */
+function eatOnce(engine: Engine): void {
+  engine.food = { x: engine.snake[0].x + 1, y: engine.snake[0].y }
+  engine.update(200)
+}
+
+describe('奖励食物', () => {
+  it('每吃满 5 个普通食物出现一个限时奖励', () => {
+    const engine = createEngine()
+    engine.start()
+    expect(engine.bonus).toBeNull()
+    for (let i = 0; i < 4; i++) eatOnce(engine) // 吃 4 个：无奖励
+    expect(engine.bonus).toBeNull()
+    eatOnce(engine) // 第 5 个：出奖励
+    expect(engine.bonus).not.toBeNull()
+    expect(engine.bonus!.timer).toBeGreaterThan(0)
+  })
+
+  it('吃奖励 +50 分且蛇身不变长', () => {
+    const engine = createEngine()
+    engine.start()
+    for (let i = 0; i < 5; i++) eatOnce(engine)
+    const lenBefore = engine.length
+    const scoreBefore = engine.score
+    // 手工把奖励放到蛇头正前方一步
+    engine.bonus = { point: { x: engine.snake[0].x + 1, y: engine.snake[0].y }, timer: 3000 }
+    engine.update(200)
+    expect(engine.score).toBe(scoreBefore + 50)
+    expect(engine.length).toBe(lenBefore) // 不变长
+    expect(engine.bonus).toBeNull()
+  })
+
+  it('奖励超时消失且不得分，派发 bonusExpire 事件', () => {
+    const engine = createEngine()
+    const events: GameEvent[] = []
+    engine.subscribe((e) => events.push(e))
+    engine.start()
+    engine.bonus = { point: { x: 5, y: 5 }, timer: 100 }
+    engine.update(101) // 超时，但不足一个步进间隔（蛇不动）
+    expect(engine.bonus).toBeNull()
+    expect(engine.score).toBe(0)
+    expect(events).toContainEqual({ type: 'bonusExpire' })
+  })
+
+  it('吃奖励派发 eatBonus 事件', () => {
+    const engine = createEngine()
+    const events: GameEvent[] = []
+    engine.subscribe((e) => events.push(e))
+    engine.start()
+    for (let i = 0; i < 5; i++) eatOnce(engine)
+    engine.bonus = { point: { x: engine.snake[0].x + 1, y: engine.snake[0].y }, timer: 3000 }
+    engine.update(200)
+    expect(events).toContainEqual({ type: 'eatBonus' })
+  })
+})
+
+describe('暂停', () => {
+  it('togglePause 在 playing/paused 间切换', () => {
+    const engine = createEngine()
+    engine.start()
+    engine.togglePause()
+    expect(engine.state).toBe('paused')
+    engine.togglePause()
+    expect(engine.state).toBe('playing')
+  })
+
+  it('暂停时 update 完全冻结：蛇不动、奖励计时不减、不死亡', () => {
+    const engine = createEngine()
+    engine.start()
+    for (let i = 0; i < 5; i++) eatOnce(engine)
+    expect(engine.bonus).not.toBeNull()
+    const headBefore = { ...engine.snake[0] }
+    const timerBefore = engine.bonus!.timer
+
+    engine.togglePause()
+    engine.update(60000)
+    expect(engine.state).toBe('paused')
+    expect(engine.snake[0]).toEqual(headBefore)
+    expect(engine.bonus!.timer).toBe(timerBefore)
+
+    // 恢复后继续：奖励倒计时恢复扣减
+    engine.togglePause()
+    engine.update(100)
+    expect(engine.bonus!.timer).toBe(timerBefore - 100)
+  })
+})
+
 describe('事件', () => {
   it('eat / gameOver 按序派发，退订后不再收到', () => {
     const engine = createEngine()

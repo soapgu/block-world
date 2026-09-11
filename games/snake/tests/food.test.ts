@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { spawnFood } from '../src/game/food'
+import { spawnBonusFood, spawnFood } from '../src/game/food'
 import { GRID_HEIGHT, GRID_WIDTH } from '../src/game/grid'
 import type { SnakeBody } from '../src/game/snake'
 
@@ -59,5 +59,40 @@ describe('spawnFood', () => {
       }
     }
     expect(spawnFood(almostFull, () => 0.999)).toEqual({ x: 0, y: 0 })
+  })
+})
+
+describe('spawnBonusFood', () => {
+  it('避开蛇身与现有普通食物（大量随机采样）', () => {
+    const snake: SnakeBody = [
+      { x: 10, y: 10 },
+      { x: 9, y: 10 },
+      { x: 8, y: 10 },
+    ]
+    const food = { x: 0, y: 0 }
+    for (let i = 0; i < 500; i++) {
+      const bonus = spawnBonusFood(snake, food)
+      expect(bonus).not.toBeNull()
+      expect(onSnake(snake, bonus!)).toBe(false)
+      expect(bonus!.x === 0 && bonus!.y === 0).toBe(false)
+    }
+  })
+
+  it('注入固定 rng 结果可复现：rng=0 取第一个同时避开蛇与食物的空闲格', () => {
+    const snake: SnakeBody = [{ x: 10, y: 10 }]
+    const food = { x: 0, y: 0 }
+    // (0,0) 被普通食物占用，第一个空闲格变为 (1,0)
+    expect(spawnBonusFood(snake, food, () => 0)).toEqual({ x: 1, y: 0 })
+  })
+
+  it('空闲格仅剩普通食物位置时返回 null', () => {
+    const snake: SnakeBody = []
+    for (let y = 0; y < GRID_HEIGHT; y++) {
+      for (let x = 0; x < GRID_WIDTH; x++) {
+        if (x === 0 && y === 0) continue
+        snake.push({ x, y })
+      }
+    }
+    expect(spawnBonusFood(snake, { x: 0, y: 0 }, () => 0)).toBeNull()
   })
 })

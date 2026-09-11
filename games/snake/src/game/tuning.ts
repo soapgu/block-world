@@ -13,6 +13,12 @@ export const TUNING = {
   minInterval: 70,
   /** 每个食物得分 */
   foodScore: 10,
+  /** 奖励食物得分（只加分不变长，Snake II 风险回报） */
+  bonusScore: 50,
+  /** 奖励食物存活时长（ms） */
+  bonusLifetimeMs: 5000,
+  /** 每吃多少个普通食物出现一次奖励食物 */
+  bonusEvery: 5,
   /** 方向队列容量：缓存最近 2 次按键，防快速转向丢输入 */
   dirQueueLength: 2,
 } as const
