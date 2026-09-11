@@ -36,6 +36,11 @@ export function useKeyboard(engine: Engine): void {
           e.preventDefault()
           engine.start()
         }
+        return
+      }
+      if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault()
+        engine.togglePause()
       }
     }
 

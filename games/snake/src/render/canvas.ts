@@ -6,6 +6,10 @@ export const CELL_SIZE = 24
 
 /** 食物闪烁周期（ms） */
 const FOOD_BLINK_MS = 300
+/** 奖励食物闪烁周期（ms） */
+const BONUS_BLINK_MS = 150
+/** 奖励食物临期（剩余不足此时长）加速闪烁 */
+const BONUS_URGENT_MS = 1500
 
 const COLORS = {
   /** 液晶底：中心稍亮的 LCD 绿（背光不均感） */
@@ -18,6 +22,7 @@ const COLORS = {
   head: '#39ff6e',
   headBorder: '#0a3a0a',
   food: '#9fff9f',
+  bonus: '#d4ffd4',
 } as const
 
 export function boardPixelWidth(): number {
@@ -87,6 +92,15 @@ export function drawGame(
   // 食物：像素闪烁（半周期显示）
   if (engine.food && Math.floor(nowMs / FOOD_BLINK_MS) % 2 === 0) {
     drawCell(ctx, engine.food.x, engine.food.y, COLORS.food)
+  }
+
+  // 奖励食物：快闪，临期时再加速（营造紧迫感）
+  if (engine.bonus) {
+    const urgent = engine.bonus.timer <= BONUS_URGENT_MS
+    const period = urgent ? BONUS_BLINK_MS / 2 : BONUS_BLINK_MS
+    if (Math.floor(nowMs / period) % 2 === 0) {
+      drawCell(ctx, engine.bonus.point.x, engine.bonus.point.y, COLORS.bonus)
+    }
   }
 
   // 蛇身（跳过头部，头部单独亮色绘制）
