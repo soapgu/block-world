@@ -1,14 +1,15 @@
 import React from 'react';
 import {AbsoluteFill, Audio, Composition, Img, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import content from './content.json';
-import captions from './generated-captions.json';
+import lessonTimeline from './lesson-timeline.json';
+import lessonCaptions from './lesson-captions.json';
+import {SongContent, SONG_FRAMES} from './song';
 
-type Scene = (typeof content.scenes)[number];
+type Scene = (typeof lessonTimeline.scenes)[number];
 type Point = [number, number];
 const FPS = content.fps;
 const BAR_SECONDS = 4 * 60 / content.rapBpm;
 const RAP_FRAMES = Math.round(content.rapBars * BAR_SECONDS * FPS);
-const LESSON_FRAMES = content.lessonMainSeconds * FPS + RAP_FRAMES;
 const FONT = 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif';
 const BLUE = '#60a5fa';
 const BLUE_BORDER = '#2563eb';
@@ -59,20 +60,21 @@ const LessonMain: React.FC = () => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
-  const scene: Scene = content.scenes.find((s) => t >= s.start && t < s.start + s.duration) ?? content.scenes[content.scenes.length - 1];
+  const scene: Scene = lessonTimeline.scenes.find((s) => t >= s.start && t < s.start + s.duration) ?? lessonTimeline.scenes[lessonTimeline.scenes.length - 1];
   const local = t - scene.start;
   const point: Point = ('point' in scene && Array.isArray(scene.point) ? scene.point : [6, 5]) as Point;
   const quiz = scene.type === 'quiz';
-  const revealAt = quiz ? 6 : scene.type === 'example' || scene.type === 'rule' ? 4 : scene.type === 'arm' ? 5 : 999;
-  const armCells = scene.type === 'arm' || scene.type === 'example' || scene.type === 'rule' || quiz ? clamp(Math.floor((local - revealAt) / 0.55) + 1, 0, 4) : 0;
-  const showResult = quiz ? local >= 8.7 : scene.type === 'example' && local >= 8;
+  const revealAt = 'revealAt' in scene && typeof scene.revealAt === 'number' ? scene.revealAt : 999;
+  const resultAt = 'resultAt' in scene && typeof scene.resultAt === 'number' ? scene.resultAt : 999;
+  const armCells = scene.type === 'arm' || scene.type === 'example' || scene.type === 'rule' || quiz ? clamp(Math.floor((local - revealAt) / 0.25) + 1, 0, 4) : 0;
+  const showResult = (quiz || scene.type === 'example') && local >= resultAt;
   const result = 'result' in scene ? scene.result : undefined;
-  const caption = captions.lesson.find((c) => t >= c.start && t < c.end)?.text || '';
-  const progress = clamp(t / content.lessonMainSeconds, 0, 1);
+  const caption = lessonCaptions.find((c) => t >= c.start && t < c.end)?.text || '';
+  const progress = clamp(t / lessonTimeline.mainDuration, 0, 1);
   const gameScene = scene.type === 'intro' || scene.type === 'game';
 
   return <AbsoluteFill style={{fontFamily: FONT, background: gameScene ? '#041604' : '#eef4fa', color: '#0f172a'}}>
-    <Audio src={staticFile('audio/lesson-main.wav')}/>
+    <Audio src={staticFile('audio/lesson-main-new.wav')}/>
     {gameScene ? <>
       <Sequence from={0} durationInFrames={35 * fps}><OffthreadVideo src={staticFile('video/gameplay.mp4')} loop style={{position: 'absolute', left: 125, top: 130, width: 520, height: 735, objectFit: 'contain', borderRadius: 20, boxShadow: '0 0 45px rgba(57,255,110,0.3)'}}/></Sequence>
       <div style={{position: 'absolute', left: 765, top: 200, right: 100, color: '#d9ffe1'}}>
@@ -93,7 +95,7 @@ const LessonMain: React.FC = () => {
         {scene.type === 'body' && <div style={{marginTop: 58, fontSize: 38, fontWeight: 800, color: BLUE_BORDER}}>身体＝2 列 × 2 排＝4 格</div>}
         {scene.type === 'arm' && <div style={{marginTop: 50, fontSize: 37, fontWeight: 800, color: ORANGE_BORDER}}>起点 + 向下 3 格＝4 格拳臂</div>}
         {scene.type === 'rule' && <div style={{marginTop: 60, padding: 24, background: '#ecfdf5', borderRadius: 22, fontSize: 32, fontWeight: 800, color: '#166534'}}>两个条件必须同时成立</div>}
-        {quiz && local < 6 && <div style={{marginTop: 66, fontSize: 50, fontWeight: 900, color: '#ea580c'}}>想一想：{Math.max(1, 6 - Math.floor(local))} 秒后揭晓</div>}
+        {quiz && local < 3 && <div style={{marginTop: 66, fontSize: 50, fontWeight: 900, color: '#ea580c'}}>想一想：{Math.max(1, 3 - Math.floor(local))} 秒后出拳</div>}
         {showResult && <div style={{marginTop: quiz ? 42 : 65}}><Pill text={result === 'hit' ? '✓ 打中：有重叠格' : '✕ 打空：没有重叠格'} color={result === 'hit' ? '#15803d' : '#b91c1c'}/></div>}
         {quiz && showResult && scene.id !== 'q4' && <Img src={staticFile(`diagrams/${scene.id}-` + (scene.id === 'q1' ? 'hit' : scene.id === 'q2' ? 'miss-side' : scene.id === 'q3' ? 'miss-far' : 'miss-edge') + '.png')} style={{position: 'absolute', right: 42, bottom: 32, width: 225, height: 225, objectFit: 'contain', opacity: 0.94}}/>}
         {scene.type === 'summary' && <div style={{marginTop: 62, fontSize: 38, color: '#15803d', fontWeight: 900}}>换个位置，也能这样判断！</div>}
@@ -141,12 +143,8 @@ const RapContent: React.FC = () => {
   </AbsoluteFill>;
 };
 
-const Lesson: React.FC = () => <AbsoluteFill>
-  <Sequence from={0} durationInFrames={content.lessonMainSeconds * FPS}><LessonMain/></Sequence>
-  <Sequence from={content.lessonMainSeconds * FPS} durationInFrames={RAP_FRAMES}><RapContent/></Sequence>
-</AbsoluteFill>;
-
 export const VideoRoot: React.FC = () => <>
-  <Composition id="Lesson" component={Lesson} durationInFrames={LESSON_FRAMES} fps={FPS} width={1920} height={1080}/>
+  <Composition id="LessonMain" component={LessonMain} durationInFrames={lessonTimeline.mainFrames} fps={FPS} width={1920} height={1080}/>
   <Composition id="Rap" component={RapContent} durationInFrames={RAP_FRAMES} fps={FPS} width={1920} height={1080}/>
+  <Composition id="Song" component={SongContent} durationInFrames={SONG_FRAMES} fps={30} width={1920} height={1080}/>
 </>;

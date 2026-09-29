@@ -1,0 +1,247 @@
+{
+  "fps": 30,
+  "mainFrames": 5301,
+  "mainDuration": 176.7,
+  "voice": "zh-CN-YunjianNeural",
+  "rate": "+10%",
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "intro",
+      "title": "一拳为什么会打中？",
+      "screen": "看起来靠得很近，也可能打空。",
+      "voice": "欢迎来到方块世界的拳击擂台！同样出一拳，有时打中，有时却打空。计算机究竟怎么判断呢？",
+      "start": 0.0,
+      "duration": 18.0,
+      "voiceStart": 0.8,
+      "voiceDuration": 9.024
+    },
+    {
+      "id": "game",
+      "type": "game",
+      "title": "先观察游戏",
+      "screen": "方向键移动 · A 左拳 · D 右拳",
+      "voice": "先看一小段游戏。机器人移动、出拳，打中时对手少一格生命。今天我们要破解这一拳背后的数学秘密。",
+      "start": 18.0,
+      "duration": 17.0,
+      "voiceStart": 18.8,
+      "voiceDuration": 9.36
+    },
+    {
+      "id": "coordinates",
+      "type": "coord",
+      "title": "给格子一个门牌号",
+      "screen": "原点 (0,0)  ·  x 向右  ·  y 向上",
+      "voice": "每个格子都有一个门牌号，叫坐标。左下角是零、零。横坐标表示从左往右第几列，纵坐标表示从下往上第几排。",
+      "start": 35.0,
+      "duration": 10.933333333333334,
+      "voiceStart": 35.0,
+      "voiceDuration": 10.824
+    },
+    {
+      "id": "body",
+      "type": "body",
+      "title": "身体占了哪四格？",
+      "screen": "(5,3)  (6,3)  (5,4)  (6,4)",
+      "voice": "蓝色身体占两列、两排，总共四格。横坐标是五和六，纵坐标是三和四。判断命中，就要知道拳臂会不会碰到这四格。",
+      "start": 45.93333333333333,
+      "duration": 11.433333333333334,
+      "voiceStart": 45.93333333333333,
+      "voiceDuration": 11.352
+    },
+    {
+      "id": "arm",
+      "type": "arm",
+      "title": "拳头不只是一个点",
+      "screen": "起点 (6,5) → (6,4) → (6,3) → (6,2)",
+      "voice": "拳头从六、五出发，拳臂再向下伸出三格。连同起点，一共占四格。我们让橙色拳臂一格一格地走下去。",
+      "start": 57.36666666666667,
+      "duration": 10.166666666666666,
+      "voiceStart": 57.36666666666667,
+      "voiceDuration": 10.056,
+      "revealAt": 7.855999999999999
+    },
+    {
+      "id": "hit",
+      "type": "example",
+      "title": "有重叠，就打中",
+      "screen": "(6,5)：拳臂与身体有重叠格",
+      "point": [
+        6,
+        5
+      ],
+      "result": "hit",
+      "voice": "看，拳臂经过六、四和六、三。这两个格子也属于蓝色身体。橙色和蓝色重叠，变成绿色，这一拳打中了。",
+      "start": 67.53333333333333,
+      "duration": 10.766666666666667,
+      "voiceStart": 67.53333333333333,
+      "voiceDuration": 10.68,
+      "revealAt": 8.48,
+      "resultAt": 9.48
+    },
+    {
+      "id": "miss-x",
+      "type": "example",
+      "title": "横向没对准",
+      "screen": "(8,6)：够得到，却从旁边经过",
+      "point": [
+        8,
+        6
+      ],
+      "result": "miss",
+      "voice": "把拳头移到八、六。纵向虽然够得到，横坐标八却不在身体的两列里。拳臂从旁边经过，所以打空。",
+      "start": 78.3,
+      "duration": 9.7,
+      "voiceStart": 78.3,
+      "voiceDuration": 9.6,
+      "revealAt": 7.3999999999999995,
+      "resultAt": 8.399999999999999
+    },
+    {
+      "id": "miss-y",
+      "type": "example",
+      "title": "纵向够不到",
+      "screen": "(6,8)：对准了，却离得太远",
+      "point": [
+        6,
+        8
+      ],
+      "result": "miss",
+      "voice": "再看六、八。横向已经对准，但拳臂最远只到纵坐标五，碰不到身体的最高一排四，所以也打空。",
+      "start": 88.0,
+      "duration": 9.3,
+      "voiceStart": 88.0,
+      "voiceDuration": 9.216,
+      "revealAt": 7.015999999999999,
+      "resultAt": 8.015999999999998
+    },
+    {
+      "id": "rule",
+      "type": "rule",
+      "title": "先对准，再够到",
+      "screen": "起点在身体上方\nx：5 ≤ x ≤ 6\ny：5 ≤ y ≤ 7",
+      "point": [
+        6,
+        7
+      ],
+      "voice": "在这个身体固定、拳臂向下伸三格的场景里，起点位于身体上方时，横坐标是五或六，纵坐标可以是五、六或七。比如六、七，拳臂末端仍会碰到身体。两个条件要同时成立。",
+      "start": 97.3,
+      "duration": 15.2,
+      "voiceStart": 97.3,
+      "voiceDuration": 15.096,
+      "revealAt": 12.896
+    },
+    {
+      "id": "quiz-intro",
+      "type": "exerciseIntro",
+      "title": "轮到你来判断",
+      "screen": "先看 x，再看 y，最后找重叠格",
+      "voice": "现在轮到你。每题先自己想一想，答案会在倒数后出现。",
+      "start": 112.5,
+      "duration": 5.766666666666667,
+      "voiceStart": 112.5,
+      "voiceDuration": 5.664
+    },
+    {
+      "id": "q1",
+      "type": "quiz",
+      "title": "第 1 题",
+      "screen": "拳头起点 (6,5)",
+      "point": [
+        6,
+        5
+      ],
+      "result": "hit",
+      "voice": "横坐标对准，纵坐标够到。拳臂与身体重叠，打中！",
+      "start": 118.26666666666667,
+      "duration": 9.733333333333333,
+      "voiceStart": 122.31666666666666,
+      "voiceDuration": 5.616,
+      "revealAt": 3.0,
+      "resultAt": 4.0
+    },
+    {
+      "id": "q2",
+      "type": "quiz",
+      "title": "第 2 题",
+      "screen": "拳头起点 (8,6)",
+      "point": [
+        8,
+        6
+      ],
+      "result": "miss",
+      "voice": "横坐标八偏到右边，虽然够得到，仍然打空。",
+      "start": 128.0,
+      "duration": 8.5,
+      "voiceStart": 132.05,
+      "voiceDuration": 4.368,
+      "revealAt": 3.0,
+      "resultAt": 4.0
+    },
+    {
+      "id": "q3",
+      "type": "quiz",
+      "title": "第 3 题",
+      "screen": "拳头起点 (6,8)",
+      "point": [
+        6,
+        8
+      ],
+      "result": "miss",
+      "voice": "横向对准了，但纵向太远，拳臂够不到，打空。",
+      "start": 136.5,
+      "duration": 9.266666666666667,
+      "voiceStart": 140.55,
+      "voiceDuration": 5.136,
+      "revealAt": 3.0,
+      "resultAt": 4.0
+    },
+    {
+      "id": "q4",
+      "type": "quiz",
+      "title": "第 4 题",
+      "screen": "拳头起点 (5,6)",
+      "point": [
+        5,
+        6
+      ],
+      "result": "hit",
+      "voice": "横向对准，拳臂经过身体左边一列，打中！",
+      "start": 145.76666666666668,
+      "duration": 8.5,
+      "voiceStart": 149.8166666666667,
+      "voiceDuration": 4.392,
+      "revealAt": 3.0,
+      "resultAt": 4.0
+    },
+    {
+      "id": "q5",
+      "type": "quiz",
+      "title": "第 5 题",
+      "screen": "拳头起点 (7,5)",
+      "point": [
+        7,
+        5
+      ],
+      "result": "miss",
+      "voice": "只差一列也没有重叠，所以打空。",
+      "start": 154.26666666666668,
+      "duration": 7.433333333333334,
+      "voiceStart": 158.3166666666667,
+      "voiceDuration": 3.312,
+      "revealAt": 3.0,
+      "resultAt": 4.0
+    },
+    {
+      "id": "summary",
+      "type": "summary",
+      "title": "真正的规则：区域重叠",
+      "screen": "身体区域 ∩ 拳臂区域 ≠ 空 → 命中",
+      "voice": "记住：先看有没有对准，再看够不够得到。今天的数字只属于这个固定场景；机器人换了位置，通用办法仍是检查两个区域有没有重叠。接下来，用一首歌把知识点记牢！",
+      "start": 161.7,
+      "duration": 15.0,
+      "voiceStart": 161.7,
+      "voiceDuration": 14.904
+    }
+  ]
+}

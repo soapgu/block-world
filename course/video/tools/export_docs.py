@@ -5,11 +5,11 @@ import json
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-data = json.loads((root / "src/content.json").read_text(encoding="utf-8"))
+data = json.loads((root / "src/lesson-timeline.json").read_text(encoding="utf-8"))
 
 
 def clock(seconds):
-    return f"{int(seconds // 60):02}:{int(seconds % 60):02}"
+    return f"{int(seconds // 60):02}:{seconds % 60:04.1f}"
 
 
 visuals = {
@@ -29,7 +29,7 @@ visuals = {
 lines = [
     "# 拳击编程课：教学版脚本与分镜",
     "",
-    "规格：1920×1080，30 fps，普通话；主课 5 分钟，结尾接 83 秒说唱复习。",
+    f"规格：1920×1080，30 fps；主课 {clock(data['mainDuration'])}，开场保留 35 秒。旁白为 Edge TTS `{data['voice']}`（语速 `{data['rate']}`），解说配轻快电子背景音乐；结尾拼接当前独立歌曲视频。",
     "",
     "## 逐段脚本",
     "",
@@ -37,7 +37,7 @@ lines = [
 for scene in data["scenes"]:
     begin = clock(scene["start"])
     end = clock(scene["start"] + scene["duration"])
-    visual = visuals.get(scene["id"], "先展示拳头起点与倒计时；六秒后逐格延伸拳臂并揭晓答案。")
+    visual = visuals.get(scene["id"], "展示拳头起点，倒计时三秒；之后逐格延伸拳臂并揭晓答案。")
     screen = scene["screen"].replace("\n", "；")
     lines += [
         f"### {begin}–{end}｜{scene['title']}",
@@ -49,18 +49,10 @@ for scene in data["scenes"]:
     ]
 
 lines += [
-    "## 说唱版歌词与节奏",
+    "## 歌曲复习",
     "",
-    "原创节拍：92 BPM、4/4 拍；每行一小节，每小节约 2.609 秒。蓝色身体、橙色拳臂、绿色重叠格随歌词变化。",
+    "结尾直接接入 [`out/boxing-rap.mp4`](./out/boxing-rap.mp4)，歌词见[新版歌曲歌词](./新版歌曲歌词.md)。",
     "",
-    "| 小节 | 时间 | 歌词 |",
-    "|---:|---|---|",
-]
-bar = 4 * 60 / data["rapBpm"]
-for i, lyric in enumerate(data["rapLines"]):
-    start, end = i * bar, (i + 1) * bar
-    lines.append(f"| {i + 1} | {clock(start)}–{clock(end)} | {lyric} |")
-lines += [
     "",
     "## 内容核对",
     "",

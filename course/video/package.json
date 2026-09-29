@@ -3,8 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "render:lesson": "remotion render src/index.ts Lesson out/boxing-lesson.mp4 --public-dir public --codec h264 --crf 21 --concurrency 6 --overwrite",
-    "render:rap": "remotion render src/index.ts Rap out/boxing-rap.mp4 --public-dir public --codec h264 --crf 21 --concurrency 6 --overwrite"
+    "render:lesson": ".venv/bin/python tools/render_lesson.py",
+    "render:rap": "remotion render src/index.ts Song out/boxing-rap.mp4 --public-dir public --codec h264 --crf 21 --concurrency 6 --overwrite"
   },
   "dependencies": {
     "@remotion/cli": "4.0.529",

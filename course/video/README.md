@@ -1,22 +1,22 @@
 # 拳击编程课视频工程
 
-本目录用 Remotion 制作教学版和说唱版。内容时间轴与原创歌词保存在 `src/content.json`；`脚本与分镜.md` 由该数据导出。说唱版采用原创合成节拍与普通话系统语音的逐小节节奏朗读。画面不修改原有游戏或讲义。
+本目录用 Remotion 制作教学主课和独立歌曲版。教学旁白使用 Edge TTS `zh-CN-YunjianNeural`，场景与字幕根据生成音频的实际时长排布；教学版结尾拼接 `out/boxing-rap.mp4`。画面不修改原有游戏或讲义。
 
 ## 本机复现
 
-需要 macOS、Chrome、Node.js、Python 3、NumPy、FFmpeg，以及可用的中文系统语音 Tingting 和 Eddy。
+需要 macOS、Chrome、Node.js、Python 3 和 FFmpeg。Edge TTS 为在线语音服务，生成旁白时需要网络连接。
 
 ```bash
 cd course/video
 npm install
-python3 tools/export_docs.py
-python3 tools/build_audio.py
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-audio.txt
 node tools/capture_game.mjs
-npm run render:rap -- --browser-executable='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-npm run render:lesson -- --browser-executable='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+npm run render:lesson
+python3 tools/export_docs.py
 ```
 
-生成的 `out/boxing-lesson.mp4` 包含主课和完整说唱，`out/boxing-rap.mp4` 是独立说唱版；`out/教学版.srt`、`out/说唱版.srt` 是外挂字幕。`public/audio/`、`public/video/` 和 `out/` 为生成产物，未纳入 Git。
+先确认或生成最新的 `out/boxing-rap.mp4` 和 `out/说唱版.srt`，再运行 `npm run render:lesson`；仅在需要重做独立歌曲时才运行 `npm run render:rap`。教学渲染脚本会生成动态时间轴、旁白及背景音乐，单独渲染主课，再拼接现有歌曲。`out/boxing-lesson.mp4` 为完整教学版，`out/教学版.srt` 为外挂字幕。`public/audio/`、`public/video/`、`.venv/` 和 `out/` 为本地产物，未纳入 Git。旧的 `tools/build_audio.py` 会生成旧说唱，重制教学版时不要运行。
 
 ## 内容检查
 

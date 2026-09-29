@@ -19,7 +19,7 @@
     {"id":"q3","start":241,"duration":13,"type":"quiz","title":"第 3 题","screen":"拳头起点 (6,8)","point":[6,8],"result":"miss","voiceAt":6,"voice":"横向对准了，但纵向太远，拳臂够不到，打空。"},
     {"id":"q4","start":254,"duration":13,"type":"quiz","title":"第 4 题","screen":"拳头起点 (5,6)","point":[5,6],"result":"hit","voiceAt":6,"voice":"横向对准，拳臂经过身体左边一列，打中！"},
     {"id":"q5","start":267,"duration":13,"type":"quiz","title":"第 5 题","screen":"拳头起点 (7,5)","point":[7,5],"result":"miss","voiceAt":6,"voice":"只差一列也没有重叠，所以打空。"},
-    {"id":"summary","start":280,"duration":20,"type":"summary","title":"真正的规则：区域重叠","screen":"身体区域 ∩ 拳臂区域 ≠ 空 → 命中","voice":"记住：先看有没有对准，再看够不够得到。今天的数字只属于这个固定场景；机器人换了位置，通用办法仍是检查两个区域有没有重叠。接下来，用一段说唱把知识点记牢！"}
+    {"id":"summary","start":280,"duration":20,"type":"summary","title":"真正的规则：区域重叠","screen":"身体区域 ∩ 拳臂区域 ≠ 空 → 命中","voice":"记住：先看有没有对准，再看够不够得到。今天的数字只属于这个固定场景；机器人换了位置，通用办法仍是检查两个区域有没有重叠。接下来，用一首歌把知识点记牢！"}
   ],
   "rapLines": [
     "方块擂台，准备开场",
